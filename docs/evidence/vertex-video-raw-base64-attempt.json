@@ -45,7 +45,31 @@
     "total_tokens": 329,
     "buyer_cost_micro": 168
   },
-  "upstreamChargeAndHoldVerification": "Pending bounded read-only request/reservation/usage diagnosis; response-reported buyer cost is not yet independent ledger reconciliation.",
+  "upstreamChargeAndHoldVerification": "Verified by bounded exact-ID log join and repeated strongly consistent request/usage/reservation reads; distinct from provider invoice or upstream on-chain payout proof.",
+  "upstreamAccounting": {
+    "observedAt": "2026-10-28T21:14:13.431569+00:00",
+    "boundedRequestCohortCount": 1,
+    "inputTokens": 269,
+    "outputTokens": 0,
+    "reasoningTokens": 60,
+    "reasoningCountExplicitNotInferred": true,
+    "buyerChargeMicro": "168",
+    "sellerAccrualMicro": "168",
+    "fundingSource": "credits",
+    "upstreamSellerSettlementStatus": "accrued",
+    "reservationStatus": "captured",
+    "holdMicro": "414",
+    "capturedMicro": "168",
+    "unusedHoldRemainderMicro": "246",
+    "reservationStillOpen": false,
+    "repeatStrongReadMatched": true,
+    "bodyReferencePresent": false,
+    "expectedCaptureObjectHeadStatus": 404,
+    "answerTextAvailableInCheckedRetainedEvidence": false,
+    "finishReasonAvailableInCheckedRetainedEvidence": false,
+    "capExhaustionProved": false,
+    "interpretation": "The 64-token cap is a leading hypothesis given explicit reasoning usage and zero recorded output, not a proven root cause. The reviewed extractor can default missing output counts to zero. The unused credit-hold remainder is not a separate charge or an on-chain refund; accrued is not an upstream on-chain payout."
+  },
   "nativeMetering": {
     "provider": "surplus",
     "service": "gemini-2.5-pro",
@@ -80,7 +104,7 @@
   "limits": [
     "HTTP 200 and confirmed native payment do not establish video understanding when the objective answer check fails.",
     "The native ledger reports zero output tokens. The response summary lacks answer text and finish reason; a token-budget or hidden-reasoning cause is not yet proven.",
-    "Reported upstream total tokens differ from native visible-token totals; do not label the difference as reasoning without further evidence.",
+    "The later read-only audit found an explicit 60 reasoning tokens, rather than inferring reasoning from total-minus-prompt tokens. The original text and finish reason remain unavailable, so token-cap exhaustion is not proven.",
     "A semantically failed request can still incur charges and settle normally.",
     "Generated-video duration fidelity remains open; this is video input, not another video-generation attempt."
   ]
