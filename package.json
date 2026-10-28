@@ -12,6 +12,7 @@
     "test": "node --test",
     "start": "node scripts/seller.mjs",
     "setup": "node scripts/setup.mjs",
+    "surplus-account": "node scripts/surplus-account.mjs",
     "register": "node scripts/register.mjs",
     "monitor": "node scripts/monitor.mjs",
     "probe": "node scripts/probe.mjs",

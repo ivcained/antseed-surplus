@@ -38,6 +38,72 @@ Edit `.env` privately before running commands:
 
 All commands below run from the project directory. `--env FILE` selects another private env file. Existing process-environment variables take precedence over the file; do not leave unrelated wallet/key variables exported in your shell.
 
+## Create your Surplus inference key and find its deposit address
+
+This seller is a **buyer of Surplus inference**. It needs an `inf_...` buyer/inference key, not an `inf_admin_...` management key or a `si_seller_...` provider key. Never send keys or wallet private material through chat or commit them to Git.
+
+### Dashboard option
+
+Sign in at [surplusintelligence.ai](https://surplusintelligence.ai/), select the intended personal/team account, and create a buyer/inference API key in its key-management screen. Save the one-time secret privately. For a team, create the key in the intended workspace; the wallet-based helper below creates a **personal-account** key, not a key for an arbitrary team. Use the account's Crypto funding screen or the authenticated deposit helper below to obtain the receiver. If activation requirements are shown, complete them before serving; `/v1/account/activation` reports outstanding requirements.
+
+### Browser-free key creation
+
+After `npm ci`, this creates a **new dedicated local wallet** if absent, signs Surplus's validated SIWE login challenge, and saves the returned inference key directly into a new `0600` dotenv file. It does not send an on-chain transaction, transfer funds or need ETH merely to sign the login message.
+
+```sh
+node scripts/surplus-account.mjs create-key \
+  --wallet .state/surplus-wallet.json --generate-wallet \
+  --out .state/surplus-key.env --label antseed-surplus --execute
+```
+
+To use an existing dedicated local wallet instead, supply its private JSON path with `--wallet` and omit `--generate-wallet`. Supported wallet fields are `address` plus `private_key` or `privateKey`; the file must have mode `0600`. Do not export your main browser-wallet key just for this helper. The Surplus login wallet and AntSeed seller wallet may be different.
+
+The helper validates the exact Surplus domain, URI, wallet, Base chain, nonce, statement and short expiry before signing. It prints only paths/public metadata, never the key. It refuses to overwrite the output or existing wallet. If issuance fails, the output may contain a reserved marker: **inspect the account's keys before creating another key**. A timed-out mint may have succeeded remotely; there is no automatic mint retry. Back up both private files: the wallet controls account access, and the inference key spends shared account credit. This helper does not create a spend budget or automatic key expiry; configure restrictions through the dashboard if required.
+
+In your private `.env`, **remove** the example `SURPLUS_API_KEY=inf_REPLACE_ME` line and use:
+
+```dotenv
+SURPLUS_API_KEY_FILE=.state/surplus-key.env
+```
+
+An inline `SURPLUS_API_KEY` takes precedence over the file. Run the following commands from the repository directory.
+
+### Discover the receiver and check funding
+
+```sh
+# Reads existing receiver metadata and balances; does not allocate an address.
+node scripts/surplus-account.mjs deposit --env .env
+
+# Explicitly create/find the receiver for the account authenticated by that key.
+node scripts/surplus-account.mjs deposit --env .env --allocate
+```
+
+`--allocate` calls `GET /v1/payments/deposit-address`. Despite being a GET, it can lazily allocate/register a receiver. The helper validates the receiver, chain and token, then reads `/v1/payments/balance`. No funds are sent. `no-receiver-reported` from a balance-only read is not proof that no receiver exists; the allocation endpoint is the authoritative provisioning step.
+
+Send **native USDC on Base (chain 8453)** to the returned `address` only:
+
+- Native USDC contract: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`.
+- Do not send ETH, bridged USDC or another token/network to this receiver. Fund the **AntSeed seller wallet** separately with Base ETH for gas.
+- The receiver is account-scoped, not a private balance exclusively for this API key; other keys drawing on the same billing account can spend the credit. Do not use the login wallet address as a substitute.
+- Initial Surplus credit must be funded before inference can bootstrap AntSeed revenue. The monitor cannot fund a zero-credit account without eligible earnings.
+- Rerun the balance-only command until credit is available. Amounts are integer micro-USDC (`1000000 = 1 USDC`). `creditBalanceMicro` is already combined spendable credit; do not add another credit component. Pending deposits are not yet spendable.
+- Honor the returned `minConfirmations`/API `deposit_min_confirmations`; do not assume a fixed count. An undeployed receiver (`deployed: false`) is normal before its first sweep.
+
+Equivalent raw API calls, if `SURPLUS_API_KEY` is already loaded into your environment privately:
+
+```sh
+# No literal key in shell history. Do not enable shell tracing (set -x).
+curl --fail-with-body --silent --show-error \
+  https://api.surplusintelligence.ai/v1/payments/deposit-address \
+  -H "Authorization: Bearer $SURPLUS_API_KEY"
+
+curl --fail-with-body --silent --show-error \
+  https://api.surplusintelligence.ai/v1/payments/balance \
+  -H "Authorization: Bearer $SURPLUS_API_KEY"
+```
+
+These are deposit-credit calls, not ERC-20 approval or x402 per-request payments. See the [official API guide](https://surplusintelligence.ai/llms.txt) for the SIWE endpoints and activation/budget controls. Help: `node scripts/surplus-account.mjs --help`.
+
 ## Read-only setup, then review prices
 
 ```sh
