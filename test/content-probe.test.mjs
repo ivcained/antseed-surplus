@@ -45,7 +45,8 @@ test('child preload refuses missing or nonexact dispatch binding',()=>{
 // rewriting, node dispatch and buyer-handler code run; mux/payment edges are synthetic.
 async function installedDispatchScenario(options){
  const {BuyerProxy}=await import('./node_modules/@antseed/cli/dist/proxy/buyer-proxy.js');
- const {AntseedNode}=await import('@antseed/node');
+ const {AntseedNode,buildNetworkServiceOffers}=await import('@antseed/node');
+ const {BuyerPaymentManager}=await import('@antseed/buyer-core/buyer-payment-manager');
  const {BuyerRequestHandler}=await import('@antseed/buyer-core/buyer-request-handler');
  const {resolvePeerRoutePlan}=await import('./node_modules/@antseed/cli/dist/proxy/routing.js');
  const {detectRequestServiceApiProtocol,extractRequestBodyFields}=await import('@antseed/api-adapter');
@@ -54,7 +55,7 @@ async function installedDispatchScenario(options){
  const {kind='image',model='reviewed-image-20261029',alias='reviewed-image-20260101'}=options;
  const peerId='a'.repeat(40),provider='surplus';
  const protocol=options.advertisedProtocol??(kind==='video'?'venice-video':['image','edit'].includes(kind)?'openai-images':kind==='decision'?'typesafe-systemone':kind==='responses'?'openai-responses':kind==='messages'?'anthropic-messages':'openai-chat-completions');
- const stats={connections:0,payments:0,upstream:0,sent:[]};
+ const stats={connections:0,payments:0,signatures:0,paymentSends:0,upstream:0,sent:[],billingRoutes:[]};
  const peer={peerId,providers:[provider],services:[model],capabilities:[],defaultInputUsdPerMillion:2,defaultOutputUsdPerMillion:12};
  function offers(names){
   peer.services=names;
@@ -63,6 +64,23 @@ async function installedDispatchScenario(options){
   peer.providerServiceUnitBillingModels={[provider]:{services:Object.fromEntries(names.map(name=>[name,{[protocol]:{components:[{id:'output',unit:kind==='video'?'video_generations':'output_images',priceUsd:name===model?.03:.01}]}}]))}};
  }
  offers(options.offers==='alias'?[alias]:options.offers==='both'?[model,alias]:[model]);
+ // Preserve a valid Surplus preflight offer; another registered provider can
+ // advertise the exact same model on the very same peer for a lower price.
+ const preflight=buildNetworkServiceOffers([peer]).find(offer=>offer.provider==='surplus'&&offer.serviceId===model);
+ if(preflight)stats.preflight={peer:preflight.peerId,provider:preflight.provider,model:preflight.serviceId};
+ function addOtherProvider(name){
+  peer.providers.push(name);
+  for(const key of ['providerPricing','providerServiceApiProtocols','providerServiceUnitBillingModels'])peer[key][name]=structuredClone(peer[key][provider]);
+  for(const price of Object.values(peer.providerPricing[name].services)){price.inputUsdPerMillion=1;price.outputUsdPerMillion=1;price.cachedInputUsdPerMillion=1;}
+  for(const protocols of Object.values(peer.providerServiceUnitBillingModels[name].services))for(const units of Object.values(protocols))for(const component of units.components)component.priceUsd=.01;
+ }
+ if(options.otherProvider)addOtherProvider(options.otherProvider);
+ function setRegisteredProviders(names){
+  peer.providers=[...names];
+  // Equal exact-model offers: only spelling/order changes, not price or model.
+  for(const name of names)if(name!==provider)for(const key of ['providerPricing','providerServiceApiProtocols','providerServiceUnitBillingModels'])peer[key][name]=structuredClone(peer[key][provider]);
+ }
+ if(options.registeredProviders)setRegisteredProviders(options.registeredProviders);
  const fixture={bytes:Buffer.from('offline fixture'),mime:kind==='audio-input'?'audio/wav':kind==='file-input'?'application/pdf':kind==='video-input'?'video/mp4':'image/png'};
  const built=buildContentRequest(kind,model,['edit','video','vision','audio-input','file-input','video-input'].includes(kind)?fixture:undefined);
  const encoded=new Request('http://example.test'+built.path,{method:'POST',headers:built.headers,body:built.body});
@@ -70,28 +88,74 @@ async function installedDispatchScenario(options){
  if(options.body){request.body=Buffer.from(options.rawJson??JSON.stringify({...JSON.parse(request.body),...options.body}));}
  if(options.header!==undefined)request.headers['x-antseed-service']=options.header;
  if(options.multipartExtra){const text=request.body.toString('latin1'),boundary=/boundary=(.*)/.exec(request.headers['content-type'])[1];request.body=Buffer.from(text.replace(`--${boundary}--`,`--${boundary}\r\nContent-Disposition: form-data; name="${options.multipartExtra.name}"${options.multipartExtra.file?'; filename="selector.txt"':''}\r\n\r\n${options.multipartExtra.value}\r\n--${boundary}--`),'latin1');}
- const mux={sendProxyRequest(req,answer){stats.upstream++;stats.sent.push({path:req.path,headers:req.headers,fields:extractRequestBodyFields(req.headers,req.body),body:Buffer.from(req.body).toString('base64')});queueMicrotask(()=>answer({requestId:req.requestId,statusCode:200,headers:{'content-type':'application/json'},body:Buffer.from(JSON.stringify(req.path.endsWith('/retrieve')?{status:'PROCESSING'}:kind==='video'?{queue_id:'q1'}:{choices:[{message:{content:'antseed content probe works'}}]}))},{streamingStart:false}));},cancelProxyRequest(){}};
- const negotiator={bpm:{releaseRequestCoverage(){},trackVideoRetrieve(){return false;}},getOrCreatePaymentMux(){return {};},trackRequestBillingContext(){stats.payments++;return 30000n;},estimateCostFromResponse(){},trackFreeUsageRequestService(){},async prepareFreeUsageOpen(){}};
+ const mux={activeRequestCount:()=>0,sendProxyRequest(req,answer){stats.upstream++;stats.sent.push({path:req.path,headers:req.headers,fields:extractRequestBodyFields(req.headers,req.body),body:Buffer.from(req.body).toString('base64')});const challenge=options.paymentChallenge&&stats.upstream===1;queueMicrotask(()=>answer({requestId:req.requestId,statusCode:challenge?402:200,headers:{'content-type':'application/json'},body:Buffer.from(JSON.stringify(challenge?{error:{code:'payment_required'}}:req.path.endsWith('/retrieve')?{status:'PROCESSING'}:kind==='video'?{queue_id:'q1'}:{choices:[{message:{content:'antseed content probe works'}}]}))},{streamingStart:false}));},cancelProxyRequest(){}};
+ const manager=Object.create(BuyerPaymentManager.prototype);manager._signer={signTypedData:async()=>{stats.signatures++;return 'offline-signature';}};manager._channelsDomain={};
+ const negotiator={bpm:{releaseRequestCoverage(){},trackVideoRetrieve(){return false;}},getOrCreatePaymentMux(){return {};},trackRequestBillingContext(req,service,billingRoute){stats.payments++;stats.billingRoutes.push(structuredClone(billingRoute));return 30000n;},async handle402(){await manager._signReserveAuth('0x'+'d'.repeat(64),30000n,123);stats.paymentSends++;return {action:'retry'};},estimateCostFromResponse(){},trackFreeUsageRequestService(){},async prepareFreeUsageOpen(){}};
  const handler=new BuyerRequestHandler({requestTimeoutMs:100},{async getConnection(){stats.connections++;if(options.mutateDuringConnection){offers([alias]);request.body.fill(32);}return {state:'Connected'};},getMux:()=>mux,getVerificationMux:()=>({}),registerPaymentMux(){},negotiator});
  const node=Object.create(AntseedNode.prototype);node._buyerHandler=handler;node._buyerContext=()=>null;node._router=null;
  const proxy=Object.create(BuyerProxy.prototype);
- Object.assign(proxy,{_node:node,_modelRoutingClient:{},_getPeers:async()=>{if(options.mutateAfterPrecheck)offers([alias]);return [peer];},_cacheLastUpdatedAtMs:Date.now(),_peerCacheTtlMs:60000,_effectivePolicy:()=>null,_markModelActivity(){if(options.mutateBeforeHandler)offers([alias]);},_inFlightBySeller:new Map(),_videoJobQueues:new Map(),_recordPeerFailure(){},_recordPeerResponseHealth(){},_recordSellerSuccess(){},_persistResourceRoutes:async()=>{},_resourceRoutes:new ResourceRoutes(),_attribution:{isBuyerHealthy:()=>false},_now:Date.now});
+ Object.assign(proxy,{_node:node,_modelRoutingClient:{},_getPeers:async()=>{if(options.mutateAfterPrecheck)offers([alias]);if(options.mutateProviderAfterPrecheck)addOtherProvider('other');return [peer];},_cacheLastUpdatedAtMs:Date.now(),_peerCacheTtlMs:60000,_effectivePolicy:()=>null,_markModelActivity(){if(options.mutateBeforeHandler)offers([alias]);if(options.collideBeforeHandler)setRegisteredProviders(options.collideBeforeHandler);},_inFlightBySeller:new Map(),_videoJobQueues:new Map(),_recordPeerFailure(){},_recordPeerResponseHealth(){},_recordSellerSuccess(){},_persistResourceRoutes:async()=>{},_resourceRoutes:new ResourceRoutes(),_attribution:{isBuyerHealthy:()=>false},_now:Date.now});
  const makeResponse=()=>({writableEnded:false,headersSent:false,status:0,headers:{},chunks:[],writeHead(status,headers){this.status=status;this.headers=headers;this.headersSent=true;},write(bytes){this.chunks.push(Buffer.from(bytes));return true;},end(bytes){if(bytes)this.chunks.push(Buffer.from(bytes));this.writableEnded=true;},once(){},off(){}});
  const context={requiredParameters:[],requestPolicy:null,signal:new AbortController().signal,effectivePinnedPeer:peerId};
  let result,error;const res=makeResponse();
  try{
-  if(options.directHandler){request.headers['x-antseed-provider']=provider;result=await handler.sendRequest(peer,request,undefined,{pinned:true});}
+  if(options.directHandler){request.headers['x-antseed-provider']=options.handlerProvider??provider;result=await handler.sendRequest(peer,request,undefined,{pinned:true});}
+  else if(options.mutateProviderPlan){const plan=resolvePeerRoutePlan(peer,protocol,model,provider,'lenient');addOtherProvider('other');plan.provider='other';result=await proxy._dispatchToPeer(res,request,peer,new Map([[peerId,plan]]),protocol,model,null,null,true,context.signal);}
   else if(options.stalePlan){const plan=resolvePeerRoutePlan(peer,detectRequestServiceApiProtocol(request),model,null,'lenient');offers([alias]);result=await proxy._dispatchToPeer(res,request,peer,new Map([[peerId,plan]]),protocol,model,null,null,true,context.signal);}
   else result=await proxy._dispatchInference(res,context,request,null);
   if(options.poll&&res.status===200){const retrieve={...request,requestId:'offline-poll',path:'/api/v1/video/retrieve',body:Buffer.from(JSON.stringify({model,queue_id:'q1'}))};const pollRes=makeResponse();result=await proxy._dispatchInference(pollRes,context,retrieve,null);stats.pollStatus=pollRes.status;stats.pollBody=Buffer.concat(pollRes.chunks).toString();}
  }catch(cause){error=cause.message;}
- console.log(JSON.stringify({...stats,status:res.status,error:error??result?.errorMessage??null,resultStatus:result?.statusCode??null,selected:resolvePeerRoutePlan(peer,protocol,model,null,'lenient')?.serviceId}));
+ console.log(JSON.stringify({...stats,status:res.status,error:error??result?.errorMessage??null,resultStatus:result?.statusCode??null,selected:resolvePeerRoutePlan(peer,protocol,model,null,'lenient')?.serviceId,selectedProvider:resolvePeerRoutePlan(peer,protocol,model,null,'lenient')?.provider}));
 }
 function runInstalledDispatch(options){
- const pin={kind:options.kind??'image',model:options.model??'reviewed-image-20261029',peer:'a'.repeat(40)};
+ const pin={kind:options.kind??'image',model:options.model??'reviewed-image-20261029',peer:'a'.repeat(40),...(options.bindingProvider?{provider:options.bindingProvider}:{})};
  const result=spawnSync(process.execPath,['--import',probe.probeBudgetPreload(1,pin),'--input-type=module','-e',`await (${installedDispatchScenario.toString()})(${JSON.stringify(options)});`],{encoding:'utf8',timeout:10000,cwd:new URL('..',import.meta.url)});
  assert.equal(result.status,0,result.stderr);return JSON.parse(result.stdout.trim().split('\n').at(-1));
 }
+for(const [label,options] of [
+ ['cheaper same-peer exact-model route',{otherProvider:'other'}],
+ ['metadata mutation after preflight',{mutateProviderAfterPrecheck:true}],
+ ['cached plan mutation after preflight',{mutateProviderPlan:true}],
+ ['common buyer handler',{directHandler:true,otherProvider:'other',handlerProvider:'other'}],
+ ['caller binding override',{directHandler:true,otherProvider:'other',handlerProvider:'other',bindingProvider:'other'}],
+ ['uppercase handler provider',{directHandler:true,handlerProvider:'Surplus'}],
+ ['whitespace handler provider',{directHandler:true,handlerProvider:' surplus '}],
+])test(`child registered-provider surplus pin rejects ${label} before connection or payment`,()=>{
+ const result=runInstalledDispatch({...options,paymentChallenge:true});
+ assert.equal(result.preflight.provider,'surplus');assert.equal(result.preflight.model,'reviewed-image-20261029');
+ assert.equal(result.connections,0,JSON.stringify(result));assert.equal(result.payments,0);assert.equal(result.signatures,0);assert.equal(result.paymentSends,0);assert.equal(result.upstream,0);assert.deepEqual(result.sent,[]);
+ assert.match(result.error,/dispatch pin denied/i);
+ if(options.otherProvider||options.mutateProviderAfterPrecheck||options.mutateProviderPlan)assert.equal(result.selectedProvider,'other');
+});
+for(const directHandler of [false,true])test(`child registered-provider surplus pin preserves healthy ${directHandler?'handler':'CLI'} paid control`,()=>{
+ const result=runInstalledDispatch({directHandler,paymentChallenge:true});
+ assert.equal(result.error,null,JSON.stringify(result));assert.equal(directHandler?result.resultStatus:result.status,200);assert.equal(result.connections,1);assert.equal(result.payments,1);assert.equal(result.signatures,1);assert.equal(result.paymentSends,1);assert.equal(result.upstream,2);
+ assert.ok(result.sent.every(request=>request.headers['x-antseed-provider']==='surplus'&&request.fields.model==='reviewed-image-20261029'));
+ assert.deepEqual(result.billingRoutes,[{sellerPeerId:'a'.repeat(40),provider:'surplus',service:'reviewed-image-20261029',serviceApiProtocol:'openai-images',unitModel:{components:[{id:'output',unit:'output_images',priceUsd:.03}]},tokenPricing:{inputUsdPerMillion:2,outputUsdPerMillion:12,cachedInputUsdPerMillion:2}}]);
+});
+for(const directHandler of [false,true])for(const registeredProviders of [['Surplus','surplus'],['surplus','Surplus'],['SURPLUS','surplus'],['surplus','SURPLUS']])test(`child registered-provider surplus pin rejects case-colliding ${JSON.stringify(registeredProviders)} in ${directHandler?'handler':'CLI'} before connection or payment`,()=>{
+ const result=runInstalledDispatch({directHandler,registeredProviders,paymentChallenge:true});
+ assert.deepEqual(result.preflight,{peer:'a'.repeat(40),provider:'surplus',model:'reviewed-image-20261029'});assert.equal(result.selectedProvider,'surplus');
+ assert.equal(result.connections,0,JSON.stringify(result));assert.equal(result.payments,0);assert.equal(result.signatures,0);assert.equal(result.paymentSends,0);assert.equal(result.upstream,0);assert.deepEqual(result.sent,[]);assert.deepEqual(result.billingRoutes,[]);
+ assert.match(result.error,/dispatch pin denied/i);
+});
+for(const directHandler of [false,true])for(const registeredProviders of [['Surplus'],[' surplus ']])test(`child registered-provider surplus pin rejects nonliteral registration ${JSON.stringify(registeredProviders)} in ${directHandler?'handler':'CLI'} before connection or payment`,()=>{
+ const result=runInstalledDispatch({directHandler,registeredProviders,paymentChallenge:true});
+ // Catalog matrices can retain a literal surplus offer absent from providers.
+ assert.deepEqual(result.preflight,{peer:'a'.repeat(40),provider:'surplus',model:'reviewed-image-20261029'});assert.equal(result.selectedProvider,'surplus');
+ assert.equal(result.connections,0,JSON.stringify(result));assert.equal(result.payments,0);assert.equal(result.signatures,0);assert.equal(result.paymentSends,0);assert.equal(result.upstream,0);assert.deepEqual(result.sent,[]);assert.deepEqual(result.billingRoutes,[]);assert.match(result.error,/dispatch pin denied/i);
+});
+for(const collideBeforeHandler of [['Surplus','surplus'],['surplus','Surplus']])test(`child registered-provider surplus pin rechecks case-colliding ${JSON.stringify(collideBeforeHandler)} after CLI plan validation`,()=>{
+ const result=runInstalledDispatch({collideBeforeHandler,paymentChallenge:true});
+ assert.equal(result.connections,0,JSON.stringify(result));assert.equal(result.payments,0);assert.equal(result.signatures,0);assert.equal(result.paymentSends,0);assert.equal(result.upstream,0);assert.deepEqual(result.billingRoutes,[]);assert.match(result.error,/dispatch pin denied/i);
+});
+for(const directHandler of [false,true])for(const registeredProviders of [[' surplus ','surplus'],['surplus',' surplus ']])test(`child registered-provider surplus pin preserves nonmatching whitespace ${JSON.stringify(registeredProviders)} in ${directHandler?'handler':'CLI'}`,()=>{
+ // The installed billing/seller matcher lowercases names but does NOT trim them.
+ const result=runInstalledDispatch({directHandler,registeredProviders,paymentChallenge:true});
+ assert.equal(result.error,null,JSON.stringify(result));assert.equal(directHandler?result.resultStatus:result.status,200);assert.equal(result.connections,1);assert.equal(result.payments,1);assert.equal(result.signatures,1);assert.equal(result.paymentSends,1);assert.equal(result.upstream,2);
+ assert.deepEqual(result.billingRoutes.map(route=>route.provider),['surplus']);
+ assert.ok(result.sent.every(request=>request.headers['x-antseed-provider']==='surplus'&&request.fields.model==='reviewed-image-20261029'));
+});
 for(const offers of ['both','alias'])test(`child exact-model dispatch rejects ${offers} canonical offer selection before payment`,()=>{
  const result=runInstalledDispatch({offers});assert.equal(result.selected,'reviewed-image-20260101');assert.equal(result.upstream,0,JSON.stringify(result));assert.equal(result.payments,0);assert.equal(result.connections,0);assert.match(result.error,/exact.*model|model.*pin/i);
 });
