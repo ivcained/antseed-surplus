@@ -59,9 +59,17 @@ test('reviewed endpoint quotes pin actual loopback Chat forwarding while nested 
  assert.equal(paid.length,3);
  assert.deepEqual(paid[0].messages[0].content[1],{type:'file',file:{filename:'fixture.pdf',file_data:`data:application/pdf;base64,${pdf.toString('base64')}`}});
  assert.deepEqual(Buffer.from(paid[0].messages[0].content[1].file.file_data.split(',')[1],'base64'),pdf);
- assert.equal(paid[2].messages[0].content[1].input_audio.data,`data:video/mp4;base64,${video.toString('base64')}`,'Vertex video must preserve the full native data URI, not raw base64');
- assert.deepEqual(paid[2].messages[0].content[1],{type:'input_audio',input_audio:{format:'video/mp4',data:`data:video/mp4;base64,${video.toString('base64')}`}});
- assert.deepEqual(Buffer.from(paid[2].messages[0].content[1].input_audio.data.split(',')[1],'base64'),video);
- assert.equal(paid[2].messages[0].content[1].input_audio.format,'video/mp4');
+ assert.deepEqual(paid[2],{
+  model:models[2],
+  messages:[{role:'user',content:[{type:'text',text:'Describe the predominant color and motion in this short video.'},{type:'input_audio',input_audio:{format:'video/mp4',data:video.toString('base64')}}]}],
+  max_tokens:64,temperature:0,
+  provider:'aiplatform.googleapis.com',max_price_per_1m:quotes.services[models[2]].maxPricePer1m,
+  providers_blocked:['antseed'],si_route:{objective:'price_without_cache',cache:false},
+ },'the actual controlled video builder must forward the entire raw-base64 envelope with exact reviewed routing');
+ const encoded=paid[2].messages[0].content[1].input_audio.data;
+ assert.doesNotMatch(encoded,/^data:/,'this controlled Vertex probe must not send a data URI prefix');
+ assert.match(encoded,/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/);
+ assert.deepEqual(Buffer.from(encoded,'base64'),video);
+ assert.equal(Buffer.from(encoded,'base64').toString('base64'),encoded);
  assert.equal(events.length,3);assert.doesNotMatch(JSON.stringify(events),/fixture_upstream_only|fixture_loopback_only|fixture_buyer|base64|Preserve nested/);
 });

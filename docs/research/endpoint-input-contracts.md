@@ -16,13 +16,21 @@ Pin the direct upstream host `api.openai.com`, not a provider family selected on
 
 [Official Vertex compatibility overview](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/migrate/openai/overview) states that `input_audio.data` accepts any URI or valid blob format, including image, audio and video; `input_audio.format` accepts valid MIME types. Blob syntax is `data:<MIME-TYPE>;base64,<BASE64-ENCODED-BYTES>`.
 
-The following video envelope is **derived from that documented generic blob contract**, not copied from a verbatim video example:
+The following original video envelope was **derived from that documented generic blob contract**, not copied from a verbatim video example. It is preserved here as the initial proposal, not a working example: the controlled paid attempt subsequently failed provider parsing.
 
 ```json
 {"type":"input_audio","input_audio":{"format":"video/mp4","data":"data:video/mp4;base64,<MP4_BYTES>"}}
 ```
 
 Pin `aiplatform.googleapis.com`. Retain Chat's ordinary message envelope; do not inject native Gemini `contents`/`inlineData`, transcode the video, or substitute extracted frames. The upstream Vertex model and project-scoped endpoint are the selected seller's responsibility; a host pin is not an exact seller/project/offer pin.
+
+### Observed rejection and scoped source-correction candidate
+
+The [retained controlled attempt](../evidence/pdf-input-and-vertex-attempt.json) returned Vertex HTTP 400 / `INVALID_ARGUMENT`: `Invalid base64-encoded blob data found in an 'input_audio' 'data' field.` The retained buyer request supplied the full MIME data URI above. This is request/log evidence, not a historical capture of every outbound provider byte or proof that Vertex rejects all data URIs.
+
+The controlled probe now tests the smallest compatibility change: raw Base64 of the same original MP4 bytes in `input_audio.data`, with unchanged `format: "video/mp4"`, Chat envelope and exact Vertex gate. Builder and actual-builder-to-loopback-gateway regressions compare the entire envelope, strict canonical Base64 and original bytes, while preserving PDF data URIs, AI Studio audio and credential isolation. No global gateway rewrite is introduced. The [source-correction record](../evidence/vertex-video-raw-base64-candidate.json) contains parent and independent offline approval. Anonymous public-clone verification and a new bounded paid AntSeed request with objective output, native metering and canonical seller payout remain acceptance gates; offline preservation tests alone cannot establish provider compatibility.
+
+The failed request had zero recorded Surplus charge and a released temporary credit hold. Its separate native AntSeed reserve was [subsequently released](../evidence/failed-video-reserve-release.json); cleanup is not a successful video-understanding result.
 
 ## Why the original AI Studio route is not a sufficient candidate
 

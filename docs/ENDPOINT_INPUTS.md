@@ -7,10 +7,10 @@
 AI Studio and Vertex both use marketplace provider ID `google`, but their documented Chat media envelopes differ. A generic Google pin is not sufficient.
 
 - PDF input uses OpenAI Chat `file.file_data`, pinned to `api.openai.com`.
-- Video input uses Vertex Chat `input_audio`, with `format: "video/mp4"` and `data: "data:video/mp4;base64,..."`, pinned to `aiplatform.googleapis.com`.
+- The controlled video-input candidate uses Vertex Chat `input_audio`, with `format: "video/mp4"` and raw Base64 MP4 bytes in `data`, pinned to `aiplatform.googleapis.com`. The original data-URI variant failed live parsing; raw Base64 is a scoped compatibility correction, not yet paid acceptance or a claim that Vertex universally rejects data URIs.
 - The existing AI Studio WAV/MP3 input keeps raw Base64 and `format: "wav"` or `"mp3"`, pinned to `generativelanguage.googleapis.com`.
 
-No text extraction, video-frame extraction, transcoding, or Gemini-native request rewrite is performed. Original binary input bytes are preserved in the documented Chat envelope.
+No text extraction, video-frame extraction, transcoding, or Gemini-native request rewrite is performed. Original binary input bytes are preserved in Chat; the PDF keeps its full data URI, while this controlled video candidate uses raw Base64. The gateway forwards the selected envelope without a global prefix-stripping rule.
 
 ## Configure the exact model routes
 
@@ -60,6 +60,6 @@ For an MP4 with an unambiguous red scene, set `TEST_EXPECT_CONTAINS=red` and the
 npm run content-probe -- --kind video-input --model gemini-2.5-pro --input /absolute/path/to/red.mp4 --execute
 ```
 
-The PDF command has a controlled passing public-clone record; the video-input command remains a candidate after an upstream HTTP 400, not a passing example. Read-only diagnosis identified Vertex `INVALID_ARGUMENT` rejecting the original data-URI string as invalid Base64 in `input_audio.data`; a narrowly scoped raw-Base64 correction still requires review and paid public-clone acceptance. The failed attempt had zero recorded Surplus charge and a released credit hold. Its separate native buyer reserve was subsequently [released to Deposits availability by a confirmed seller zero-close](evidence/failed-video-reserve-release.json), with operator permissions unchanged. Inputs must satisfy the existing regular-file, format and 1 MiB probe limits. An expected substring is only a bounded semantic check for a controlled known fixture; do not treat an arbitrary substring as general media-understanding certification. A failed semantic check may still incur a charge.
+The PDF command has a controlled passing public-clone record; the video-input command remains a candidate after an upstream HTTP 400, not a passing example. Read-only diagnosis identified Vertex `INVALID_ARGUMENT` rejecting the original data-URI string as invalid Base64 in `input_audio.data`; the narrowly scoped raw-Base64 correction passed parent and independent source review, but still requires paid public-clone acceptance. The failed attempt had zero recorded Surplus charge and a released credit hold. Its separate native buyer reserve was subsequently [released to Deposits availability by a confirmed seller zero-close](evidence/failed-video-reserve-release.json), with operator permissions unchanged. Inputs must satisfy the existing regular-file, format and 1 MiB probe limits. An expected substring is only a bounded semantic check for a controlled known fixture; do not treat an arbitrary substring as general media-understanding certification. A failed semantic check may still incur a charge.
 
 Both controlled probes reject missing, wrong or malformed quoted endpoints before buyer startup and recheck quotes immediately before dispatch. The existing exact AntSeed registered-provider/model/peer, module-version and cumulative authorization guards remain required. Confirm persisted metering, canonical channel settlement and seller payout separately from HTTP/content success. Controlled self-buyer traffic is not organic demand or actual profit.

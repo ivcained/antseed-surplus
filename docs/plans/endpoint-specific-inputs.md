@@ -2,7 +2,7 @@
 
 ## Evidence and remaining scope
 
-Live public-clone coverage is 9/11; PDF and video input are not yet accepted. Existing AI Studio Chat handles image/audio but the linked official Google cookbook explicitly says its OpenAI compatibility surface supports inline images/audio only, not video. PDF Chat is documented by OpenAI; Vertex separately documents generic multimodal blobs through its OpenAI-compatible Chat API. Do not conflate AI Studio and Vertex because both have marketplace provider ID `google`.
+The initial baseline was 9/11, with PDF and video input unaccepted. Current public-clone coverage is 10/11: PDF passed objective output, metering and canonical payout; video input remains unaccepted, and Task E supersedes the initial Task B data-URI choice after a diagnosed live parsing rejection. Existing AI Studio Chat handles image/audio but the linked official Google cookbook explicitly says its OpenAI compatibility surface supports inline images/audio only, not video. PDF Chat is documented by OpenAI; Vertex separately documents generic multimodal blobs through its OpenAI-compatible Chat API. Do not conflate AI Studio and Vertex because both have marketplace provider ID `google`.
 
 Parent independently fetched the following contracts:
 - https://developers.openai.com/api/docs/guides/file-inputs.md — Chat supports PDF `file` parts with `file_data`; not external file URLs.
@@ -20,6 +20,8 @@ Allow explicit reviewed OpenAI reference-envelope pricing, preserving existing e
 Test mixed-model OpenAI/AI Studio/Vertex selection, no cross-host economic contamination, unhealthy/unavailable offers, malformed routes, expiry ordering, no credentials on public discovery, and unchanged native Chat body forwarding/provider overwrite at the credential-isolated gateway. Missing reference/cache evidence remains failure, not zero.
 
 ## Task B: Exact provider-bound content probes (strict TDD)
+
+Historical initial proposal: the video data-URI representation below was implemented and then failed live parsing. Task E is the current narrowly scoped correction; preserve the failed attempt rather than treating this proposal as accepted.
 
 Own `lib/content-probe.mjs` and `test/content-probe.test.mjs`.
 

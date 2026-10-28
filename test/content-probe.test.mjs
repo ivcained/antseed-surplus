@@ -328,16 +328,21 @@ test('OpenAI PDF Chat file envelope preserves every original byte without text e
   assert.deepEqual(Buffer.from(JSON.parse(request.body).messages[0].content[1].file.file_data.split(',')[1],'base64'),bytes);
  }finally{await rm(dir,{recursive:true,force:true});}
 });
-test('Vertex video Chat generic input_audio blob preserves original MP4 bytes and full MIME',async()=>{
+test('controlled Vertex video Chat input_audio uses strict raw base64 of original MP4 bytes and full MIME',async()=>{
  const bytes=realMp4,dir=await mkdtemp(join(tmpdir(),'content-probe-video-input-'));
  try{
   const path=join(dir,'original.mp4');await writeFile(path,bytes);
   const original=await probe.readProbeInput(path,'video-input');assert.equal(original.mime,'video/mp4');assert.deepEqual(original.bytes,bytes);
   const request=probe.buildContentRequest('video-input','reviewed-exact-model',original);
   assert.equal(request.path,'/v1/chat/completions');assert.deepEqual(request.headers,{'content-type':'application/json'});
-  const data=`data:video/mp4;base64,${bytes.toString('base64')}`;
-  assert.deepEqual(JSON.parse(request.body),{model:'reviewed-exact-model',messages:[{role:'user',content:[{type:'text',text:'Describe the predominant color and motion in this short video.'},{type:'input_audio',input_audio:{format:'video/mp4',data}}]}],max_tokens:64,temperature:0});
-  assert.deepEqual(Buffer.from(JSON.parse(request.body).messages[0].content[1].input_audio.data.split(',')[1],'base64'),bytes);
+  const data=bytes.toString('base64');
+  const body=JSON.parse(request.body);
+  assert.deepEqual(body,{model:'reviewed-exact-model',messages:[{role:'user',content:[{type:'text',text:'Describe the predominant color and motion in this short video.'},{type:'input_audio',input_audio:{format:'video/mp4',data}}]}],max_tokens:64,temperature:0});
+  const encoded=body.messages[0].content[1].input_audio.data;
+  assert.doesNotMatch(encoded,/^data:/);
+  assert.match(encoded,/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/);
+  assert.deepEqual(Buffer.from(encoded,'base64'),bytes);
+  assert.equal(Buffer.from(encoded,'base64').toString('base64'),encoded);
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 for(const [mime,format] of [['audio/wav','wav'],['audio/mpeg','mp3']])test(`AI Studio ${format} audio keeps raw base64 and short format unchanged`,()=>{
