@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "f6f3a33640e68a7d6997b8892d0dc19f99d59570",
+  "installation": {
+    "anonymousPublicClone": true,
+    "lockedInstallPassed": true,
+    "node": "22.22.0",
+    "nativeSqliteVerified": true,
+    "testsPassed": 643,
+    "testsFailed": 0
+  },
+  "traffic": "controlled seller-pinned AntSeed self-buyer, not direct Surplus substitution or organic demand",
+  "buyer": "0x66fC6ca3CBC768B5d889e77Bc75eD1a79683DEC9",
+  "seller": "0x0e49122e76bD8B9ccb2FE10c0088C41Ceb608927",
+  "pdf": {
+    "kind": "file-input",
+    "model": "gpt-4o",
+    "quotedEndpoint": "api.openai.com",
+    "startedAt": "2026-10-28T20:08:41.402Z",
+    "completedAt": "2026-10-28T20:09:04.117Z",
+    "inputMime": "application/pdf",
+    "inputBytes": 603,
+    "wire": "Chat file.file_data full data URI; original PDF bytes, no text extraction",
+    "authorizationBudgetUsd": 0.1,
+    "status": 200,
+    "objectiveExpectedText": "Antseed content probe works.",
+    "answerMatched": true,
+    "textSha256": "2bc9117a1f05740cd828e6e9d3be5eac3787c21d70efd1838ae004ee130e9613",
+    "metering": {
+      "registeredProvider": "surplus",
+      "inputTokens": 237,
+      "outputTokens": 14,
+      "totalTokens": 251,
+      "cachedInputTokens": 0,
+      "method": "provider-usage",
+      "confidence": "high"
+    },
+    "reportedUpstreamBuyerCostMicro": "22",
+    "settlement": {
+      "checkedAt": "2026-10-28T20:11:47.394Z",
+      "chainChannelStatus": 2,
+      "transactionHash": "0xd93e2908b280b9f7de016600b10564672af3828d203384d5dd46bfe027820478",
+      "blockNumber": 53214400,
+      "confirmations": 80,
+      "receiptStatus": 1,
+      "grossMicro": "1855",
+      "feeMicro": "74",
+      "netMicro": "1781",
+      "canonicalPayoutMatches": true
+    },
+    "accepted": true
+  },
+  "videoInputAttempt": {
+    "kind": "video-input",
+    "model": "gemini-2.5-pro",
+    "quotedEndpoint": "aiplatform.googleapis.com",
+    "gatewayCompletedAt": "2026-10-28T20:09:25.140Z",
+    "authorizationBudgetUsd": 0.1,
+    "gatewayStatus": 502,
+    "upstreamStatus": 400,
+    "accepted": false,
+    "cause": "Exact upstream rejection under read-only investigation; do not infer provider fault or invent an error body",
+    "nativePaymentState": {
+      "checkedAt": "2026-10-28T20:11:47.394Z",
+      "chainChannelStatus": 1,
+      "chainDepositMicro": "100000",
+      "chainSettledMicro": "0",
+      "canonicalSettlementEvents": 0,
+      "refundVerified": false,
+      "timeoutCloseAttempt": {
+        "method": "installed native CLI buyer channels request-close",
+        "failedAt": "estimateGas",
+        "revertSelector": "0xea8e4eb5",
+        "broadcastOccurred": false,
+        "refundClaimed": false
+      }
+    }
+  },
+  "temporaryProcessesStopped": true,
+  "temporaryListenersClosed": true,
+  "deliveryCases": {
+    "text": true,
+    "image-generation": true,
+    "image-edit": true,
+    "native-video-delivery": true,
+    "decisions": true,
+    "vision": true,
+    "responses": true,
+    "messages": true,
+    "audio-input": true,
+    "pdf-input": true,
+    "video-input": false
+  },
+  "liveDeliveryCasesPassed": 10,
+  "liveDeliveryCasesTotal": 11,
+  "limits": [
+    "The expected substring is a controlled-fixture semantic check, not general PDF capability certification.",
+    "Reported upstream cost is response evidence, not independent account-ledger reconciliation or an upstream on-chain settlement.",
+    "The failed video-input attempt has no native seller settlement, but its buyer channel still held a 100000-micro deposit at the observation; no refund is claimed.",
+    "Video understanding and generated-video duration fidelity remain open.",
+    "Controlled self-buyer volume and gross/net payouts are not organic demand or actual profit after gas and hosting."
+  ]
+}

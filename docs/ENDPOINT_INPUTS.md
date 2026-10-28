@@ -1,6 +1,6 @@
 # Endpoint-specific PDF and video understanding
 
-> Endpoint routing and input envelopes have independent source review, but paid public-clone acceptance is still required. The first endpoint-only attempts stopped before inference on a registered-provider catalog mismatch; see [predispatch evidence](evidence/endpoint-input-predispatch.json) and the runtime repair in the [plan](plans/endpoint-specific-inputs.md#task-c-endpoint-only-registered-provider-runtime-seam-strict-tdd). These instructions do not upgrade the recorded 9/11 live coverage. See [contract research](research/endpoint-input-contracts.md) and [current acceptance evidence](MEDIA.md#acceptance-evidence).
+> PDF input passed a paid seller-pinned AntSeed request from a fresh anonymous clone, with native metering and confirmed canonical payout. Vertex video input returned upstream HTTP 400 and remains unaccepted; see [current endpoint evidence](evidence/pdf-input-and-vertex-attempt.json). The earlier [predispatch catalog mismatch](evidence/endpoint-input-predispatch.json) was repaired and independently reviewed before this batch. Overall controlled delivery coverage is 10/11, not full acceptance. See [contract research](research/endpoint-input-contracts.md) and [current acceptance evidence](MEDIA.md#acceptance-evidence).
 
 ## Why exact endpoints matter
 
@@ -60,6 +60,6 @@ For an MP4 with an unambiguous red scene, set `TEST_EXPECT_CONTAINS=red` and the
 npm run content-probe -- --kind video-input --model gemini-2.5-pro --input /absolute/path/to/red.mp4 --execute
 ```
 
-These are examples, not published passing runs. Inputs must satisfy the existing regular-file, format and 1 MiB probe limits. An expected substring is only a bounded semantic check for a controlled known fixture; do not treat an arbitrary substring as general media-understanding certification. A failed semantic check may still incur a charge.
+The PDF command has a controlled passing public-clone record; the video-input command remains a candidate after an upstream HTTP 400, not a passing example. Inputs must satisfy the existing regular-file, format and 1 MiB probe limits. An expected substring is only a bounded semantic check for a controlled known fixture; do not treat an arbitrary substring as general media-understanding certification. A failed semantic check may still incur a charge.
 
 Both controlled probes reject missing, wrong or malformed quoted endpoints before buyer startup and recheck quotes immediately before dispatch. The existing exact AntSeed registered-provider/model/peer, module-version and cumulative authorization guards remain required. Confirm persisted metering, canonical channel settlement and seller payout separately from HTTP/content success. Controlled self-buyer traffic is not organic demand or actual profit.
