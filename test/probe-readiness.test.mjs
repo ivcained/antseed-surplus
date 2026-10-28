@@ -41,9 +41,35 @@ test('empty discovery polls until the exact peer appears without connecting a di
  options.fetchImpl=async(url,o)=>{calls.push({url,options:o});if(o.method==='POST')return json({ok:true});return json(++gets<3?{ok:true,peers:[{peerId:'b'.repeat(40)}]}:catalog());};
  await run(options);assert.equal(gets,4);assert.equal(calls.filter(c=>c.options.method==='POST').length,1);
 });
-test('empty discovery ends at a monotonic overall deadline',async()=>{
- const {calls,options}=scenario({before:{ok:true,peers:[]}});options.timeoutMs=15;
- await rejected(run(options),'PEER_UNAVAILABLE');assert.ok(calls.length>=1);assert.ok(calls.every(c=>c.options.method==='GET'));
+test('empty discovery ends at the monotonic overall deadline between metadata polls',{timeout:1000},async t=>{
+ // Advance time only at poll boundaries, not during native Response processing.
+ t.mock.timers.enable({apis:['setTimeout']});
+ const {calls,options}=scenario({before:{ok:true,peers:[]}}),controller=new AbortController();let tick=100;
+ const readiness=run({...options,timeoutMs:15,pollIntervalMs:10,now:()=>tick,signal:controller.signal});readiness.catch(()=>{});
+ try{
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(calls.length,1);
+  tick=110;t.mock.timers.tick(10);
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(calls.length,2);
+  // The second poll has only five milliseconds left; it must not renew the budget.
+  tick=115;t.mock.timers.tick(5);
+  await rejected(readiness,'PEER_UNAVAILABLE');
+  t.mock.timers.tick(options.requestTimeoutMs);await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(calls.map(c=>[new URL(c.url).pathname,c.options.method]),[['/_antseed/peers','GET'],['/_antseed/peers','GET']]);
+  assert.ok(calls.every(c=>!c.options.signal.aborted),'completed metadata request timers must be cleared');
+ }finally{controller.abort();await readiness.catch(()=>{});}
+});
+test('empty discovery crossing the overall deadline inside metadata fails closed',{timeout:1000},async t=>{
+ // A different legitimate boundary: the native body read, not the next poll,
+ // consumes the remaining budget. Keep its exact error distinct from polling.
+ t.mock.timers.enable({apis:['setTimeout']});
+ const {calls,options}=scenario(),controller=new AbortController();let tick=0,cancelled=0;
+ const body=new ReadableStream({pull(c){tick=15;c.enqueue(new TextEncoder().encode(JSON.stringify({ok:true,peers:[]})));},cancel(){cancelled++;return new Promise(()=>{});}},{highWaterMark:0});
+ const fetchImpl=async(url,o)=>{calls.push({url,options:o});return new Response(body);};
+ t.after(()=>controller.abort());
+ await rejected(run({...options,fetchImpl,timeoutMs:15,now:()=>tick,signal:controller.signal}),'DEADLINE_EXCEEDED');
+ t.mock.timers.tick(options.requestTimeoutMs);await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(calls.map(c=>[new URL(c.url).pathname,c.options.method]),[['/_antseed/peers','GET']]);
+ assert.equal(calls[0].options.signal.aborted,true);assert.equal(cancelled,1);assert.equal(body.locked,false);
 });
 
 const mutations={
