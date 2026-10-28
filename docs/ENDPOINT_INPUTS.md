@@ -1,6 +1,6 @@
 # Endpoint-specific PDF and video understanding
 
-> Candidate implementation; independent review and paid public-clone acceptance are still required. These instructions do not upgrade the recorded 9/11 live coverage. See [contract research](research/endpoint-input-contracts.md) and [current acceptance evidence](MEDIA.md#acceptance-evidence).
+> Endpoint routing and input envelopes have independent source review, but paid public-clone acceptance is still required. The first endpoint-only attempts stopped before inference on a registered-provider catalog mismatch; see [predispatch evidence](evidence/endpoint-input-predispatch.json) and the runtime repair in the [plan](plans/endpoint-specific-inputs.md#task-c-endpoint-only-registered-provider-runtime-seam-strict-tdd). These instructions do not upgrade the recorded 9/11 live coverage. See [contract research](research/endpoint-input-contracts.md) and [current acceptance evidence](MEDIA.md#acceptance-evidence).
 
 ## Why exact endpoints matter
 
@@ -33,6 +33,8 @@ Follow the README wallet/key/network setup first. Never place credentials in the
 5. Start the seller with `npm start`; restart after configuration changes. Do not run another seller with the same identity concurrently.
 
 The example deliberately uses different exact Gemini model identifiers for AI Studio audio and Vertex video. One exact model has one quoted endpoint in a seller. Changing an existing model's route does not preserve its previously tested input contract automatically.
+
+A nonempty reviewed `modelRoutes` profile selects the local Surplus provider and injects its explicit protocol map even if all services are token-billed. You do not need to enable a dummy image/video service or `MEDIA_CONFIG_FILE` just to obtain the literal registered `surplus` identity. An absent or empty route map retains the legacy text-only plugin behavior. Do not weaken readiness checks to accept `openai` when they require `surplus`.
 
 `modelRoutes` entries accept only `{ "provider", "host" }` for exact configured models and reviewed provider/hostname pairs. No wildcard, arbitrary URL, suffix, port or per-route expiry/economics override is allowed. Without an explicit Google route, Google retains the AI Studio default. Live-book pricing remains limited to the separately reviewed Groq cache-at-input policy.
 

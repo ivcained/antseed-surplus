@@ -27,6 +27,18 @@ Keep PDF bytes as the existing OpenAI Chat `file.file_data` data URI, and allow 
 
 Test exact bytes/MIME/envelope, wrong host negative controls, no conversion/transcoding/frame extraction, and existing text/image/decision/video-generation behavior.
 
+## Task C: Endpoint-only registered-provider runtime seam (strict TDD)
+
+The first public-clone PDF and Vertex attempts stopped before inference with `CATALOG_MISMATCH`; the installed official OpenAI plugin advertised `openai` even though configuration used `surplus`. There were zero paid gateway events. The endpoint-only quote set had no media `kind`, so runtime selection still chose the official plugin. Do not weaken the literal registered-provider guard or add a dummy media service to force plugin selection.
+
+Own `lib/runtime.mjs` and `test/runtime.test.mjs`. For a nonempty explicitly reviewed `pricingPolicy.modelRoutes`, select the existing local Surplus provider and inject the same explicit protocol map used by media mode, even when every quote is token-billed with no `kind`. Keep existing media selection and default legacy text selection unchanged. Test both the generated config and actual prepared runtime/plugin load path, protocol map presence, exact `surplus` registration, no credential leakage, and legacy/media controls. Parent spec review and independent security/quality review must precede publication and another paid attempt.
+
+## Task D: Generated-video duration acceptance bound (strict TDD)
+
+A separate read-only investigation replayed the deployed Surplus submit bundle against the exact retained request/policy and captured `duration: "5s"`, `resolution: "720p"`, unchanged image/prompt, and no policy adaptation. This is deployed-code replay, not historical wire capture or proof of provider fault. Existing generated outputs remain 8.08s versus requested 5s. Independently, `inspectContentResponse` only enforces a 4.5s minimum for its fixed 5s probe and has no upper bound.
+
+Own `lib/content-probe.mjs` and `test/content-probe.test.mjs`. Add the missing 5.5s maximum for the probe's fixed 5s request, preserving the existing 4.5s minimum (explicit ±10% acceptance tolerance). Keep metadata inspection distinct from full-frame decode and preserve profile mismatch as failure even for useful paid output. Regress both exact boundaries, just-outside values, 8.08s, nonfinite durations, and a real no-network `executeContentRequest` queue/poll/MP4 path with one queue only. Do not change request duration, trim/transcode outputs, loosen budgets/provider pins, modify gateway retrieval/billing, or make network/paid calls. Parent spec review and independent review precede publication.
+
 ## Integration and live gates
 
 1. Parent spec review, then independent security/quality review of each task and the combined routing/input seams.
