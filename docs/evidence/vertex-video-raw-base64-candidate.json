@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baseCommit": "7fa2aaa775db3b358f146c5072dbd7ea98b2aa54",
-  "status": "source-correction candidate; not paid video-understanding acceptance",
+  "status": "reviewed source correction; subsequent paid HTTP 200 failed objective answer check, not video-understanding acceptance",
   "sourceSha256": {
     "lib/content-probe.mjs": "87785f0943a35f81132a44f79d14deca27cb0312bd77e419642bfb1bbb9158ab",
     "test/content-probe.test.mjs": "30006a42540e87e8618de073fc6440758ee961e7645500e8acbf3dd0a3717c94",
@@ -45,14 +45,15 @@
     "Credential-isolated gateway and literal forwarding",
     "Original input bytes; no extraction or transcoding"
   ],
-  "liveRetestPerformed": false,
+  "liveRetestPerformed": true,
+  "liveRetestEvidence": "vertex-video-raw-base64-attempt.json",
   "accepted": false,
   "liveDeliveryCasesPassed": 10,
   "liveDeliveryCasesTotal": 11,
   "limits": [
     "Raw-Base64 byte-preservation tests do not establish provider semantic acceptance.",
     "This does not claim Vertex universally rejects MIME data URIs.",
-    "Independent review passed offline; anonymous public-clone verification and one explicit bounded paid AntSeed retest with objective content, metering and canonical payout remain separate gates.",
+    "Independent review and a fresh anonymous public-clone installation/full suite passed. One bounded paid retest returned HTTP 200 and settled, but failed its objective answer check; no modality acceptance is claimed.",
     "Generated-video duration fidelity remains unresolved."
   ]
 }
