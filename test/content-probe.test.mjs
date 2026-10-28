@@ -180,8 +180,52 @@ test('builds bounded native generation, edit, decision and video shapes',()=>{
  const image=probe.buildContentRequest('image','image');assert.equal(image.path,'/v1/images/generations');assert.deepEqual(JSON.parse(image.body),{model:'image',prompt:'A plain red square on a white background.',n:1,size:'1024x1024',response_format:'b64_json'});
  const edit=probe.buildContentRequest('edit','edit',input);assert.equal(edit.path,'/v1/images/edits');assert.equal(edit.body.get('model'),'edit');assert.equal(edit.body.get('n'),'1');assert.equal(edit.body.get('image').size,png.length);
  const video=JSON.parse(probe.buildContentRequest('video','video',input).body);assert.equal(video.duration,'5s');assert.equal(video.resolution,'720p');assert.match(video.image_url,/^data:image\/png;base64,/);assert.equal(video.audio,undefined);
- assert.deepEqual(JSON.parse(probe.buildContentRequest('decision','decision').body).questions,{ok:{type:'noul',instructions:'Is the state the word ping?'}});
+ assert.equal(probe.buildContentRequest('decision','decision').path,'/v1/systemone');
  for(const kind of ['edit','video','vision','audio-input','file-input','video-input'])assert.throws(()=>probe.buildContentRequest(kind,'text'),/input/i);
+});
+test('decision request uses historical TypeSafe state and criteria fixture with the ok answer id',()=>{
+ // SI 2207d607e747f487a4d83e60c7f24ad677a55a7f, decisions-probe.ts:85..97.
+ // This historical fixture is not certification of the current upstream API.
+ const request=probe.buildContentRequest('decision','typesafe/systemone');
+ assert.equal(request.path,'/v1/systemone');
+ assert.deepEqual(request.headers,{'content-type':'application/json'});
+ assert.deepEqual(JSON.parse(request.body),{
+  model:'typesafe/systemone',
+  state:{ticket_summary:'Card charged twice for the June invoice; the customer asked for a refund 38 hours ago.',account_tier:'pro',messages_waiting:2},
+  questions:{ok:{type:'noul',instructions:'Answer whether this ticket is urgent enough to page the on-call engineer within the hour with a calibrated probability.',criteria:{urgent:{allow:[0,1]}}}},
+ });
+});
+for(const [label,answer,value] of [
+ ['typed noul',{type:'noul',noul:0.75},0.75],
+ ['untyped noul',{noul:0.75},0.75],
+ ['typed probability',{type:'noul',probability:0.25},0.25],
+ ['untyped probability',{probability:0.25},0.25],
+ ['zero',{noul:0},0],['one',{noul:1},1],
+ ['negative finite',{type:'noul',noul:-0.25},-0.25],
+ ['above-one finite',{type:'noul',probability:1.25},1.25],
+])test(`decision inspection accepts native ${label} answer`,async()=>{
+ const result=await probe.inspectContentResponse('decision',response({answers:{ok:answer},usage:{input_tokens:3}}));
+ assert.deepEqual(result,{usage:{input_tokens:3},answer:{type:'noul',noul:value}});
+});
+for(const [label,body] of [
+ ['no answers',{}],['wrong id',{answers:{q1:{noul:0.5}}}],
+ ['primitive answer',{answers:{ok:0.5}}],['array answer',{answers:{ok:[0.5]}}],
+ ['null answer',{answers:{ok:null}}],['missing number',{answers:{ok:{type:'noul'}}}],
+ ['string noul',{answers:{ok:{noul:'0.5'}}}],['string probability',{answers:{ok:{probability:'0.5'}}}],
+ ['boolean noul',{answers:{ok:{noul:true}}}],['object noul',{answers:{ok:{noul:{value:0.5}}}}],
+ ['wrong explicit type',{answers:{ok:{type:'bool',noul:0.5}}}],
+ ['null explicit type',{answers:{ok:{type:null,noul:0.5}}}],
+ ['chat completion',{choices:[{message:{content:'antseed content probe works'}}]}],
+])test(`decision inspection rejects native ${label} despite HTTP 200`,async()=>{
+ await assert.rejects(probe.inspectContentResponse('decision',response(body)),/invalid numeric decision answer ok/);
+});
+for(const value of ['1e400','-1e400','NaN','Infinity'])test(`decision inspection rejects nonfinite native ${value}`,async()=>{
+ // Exponent overflow reaches Number.isFinite; NaN/Infinity are invalid JSON.
+ const body=`{"answers":{"ok":{"noul":${value}}}}`;
+ await assert.rejects(probe.inspectContentResponse('decision',new Response(body,{headers:{'content-type':'application/json'}})),/invalid numeric decision|Invalid native JSON/);
+});
+test('decision response does not substitute for unrelated text protocol content',async()=>{
+ await assert.rejects(probe.inspectContentResponse('text',response({answers:{ok:{noul:0.5}}})),/expected objective answer/);
 });
 test('text wrappers and understanding preserve native nested input families',()=>{
  assert.equal(probe.buildContentRequest('responses','text').path,'/v1/responses');assert.equal(JSON.parse(probe.buildContentRequest('responses','text').body).max_output_tokens,64);
@@ -273,7 +317,7 @@ test('remote assets are credentialless, no redirects and explicit exact-host onl
  const result=await probe.inspectContentResponse('image',response({data:[{url:'https://assets.example.test/a.png?token=private'}]}),{assetHosts:['assets.example.test'],fetchImpl:async(url,options)=>{called++;assert.equal(options.redirect,'error');assert.equal(options.credentials,'omit');assert.equal(options.headers,undefined);return new Response(png);}});
  assert.equal(called,1);assert.equal(result.media.width,1);
 });
-test('decision answers require requested numeric typed answer; native HTTP errors remain failures',async()=>{
+test('decision answers require requested structured numeric answer; native HTTP errors remain failures',async()=>{
  const result=await probe.inspectContentResponse('decision',response({answers:{ok:{type:'noul',noul:1}},usage:{input_tokens:3}}));assert.equal(result.usage.input_tokens,3);
  for(const body of [{answers:{}},{answers:{ok:{type:'noul',noul:'yes'}}},{error:{code:'denied'}}])await assert.rejects(probe.inspectContentResponse('decision',response(body)));
  await assert.rejects(probe.inspectContentResponse('decision',response({error:{code:'pilot_denied',message:'inf_secret'}},403)),error=>error.status===403 && /HTTP 403.*pilot_denied/.test(error.message) && !error.message.includes('inf_secret'));
