@@ -1,0 +1,46 @@
+{
+  "controlledTraffic": true,
+  "sourceCommit": "908b6cade9808ea8c84cde33223e6f346985e582",
+  "kind": "video-retrieval-after-restart",
+  "success": true,
+  "status": 200,
+  "media": {
+    "mime": "video/mp4",
+    "codec": "avc1",
+    "width": 960,
+    "height": 960,
+    "duration": 8.08,
+    "validation": "mp4-container-metadata",
+    "bytes": 1534746,
+    "sha256": "a811024cece251e6eb93bcb9c5ec84beb0cc5eb4e03a5a1667fe836d7c646550"
+  },
+  "samePreviouslyPaidArtifact": true,
+  "newQueueRequests": 0,
+  "newReserveSignatures": 0,
+  "acceptedJobCountBefore": 1,
+  "acceptedJobCountAfter": 1,
+  "jobIdentityUnchanged": true,
+  "buyerDeliveredHeader": null,
+  "limits": [
+    "Completed cached-job recovery, not interruption while a render is in flight.",
+    "Original video duration/profile fidelity remains unresolved.",
+    "No organic-demand or profitability claim."
+  ],
+  "buyerOriginalResourceRouteRestored": true,
+  "independentFullFrameDecodePassed": true,
+  "observedSellerRetrieveDispatches": 1,
+  "observedSellerQueueDispatches": 0,
+  "temporaryProcessesStopped": true,
+  "listenersAfterShutdown": {
+    "6881": false,
+    "6882": false,
+    "18791": false,
+    "8378": false
+  },
+  "operationalPrerequisites": [
+    "Set the real reachable ANTSEED_PUBLIC_ADDRESS; do not infer public reachability from gateway health.",
+    "Wait for the native seller-ready announcement and verify exact live DHT metadata before starting the buyer.",
+    "Restore the original buyer data directory/resource route for the previously accepted queue; a fresh buyer state correctly returned video_route_not_found."
+  ],
+  "accountingNote": "Retrieval of an already delivered and canonically settled artifact; this is not a new generation or new settled sale."
+}
