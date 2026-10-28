@@ -460,6 +460,44 @@ test('MP4 validation rejects short output and JSON delivery even if queue accept
  const mp4=Buffer.concat([Buffer.from([0,0,0,24]),Buffer.from('ftypisom'),Buffer.alloc(24)]);
  await assert.rejects(probe.inspectContentResponse('video',new Response(mp4,{headers:{'content-type':'video/mp4'}}),{inspectVideo:async()=>({codec:'h264',duration:1,width:1280,height:720})}),/duration/i);
 });
+// Synthetic MP4s exercise container metadata only; independent full-frame decode
+// remains required for actual generated artifacts, even when this profile passes.
+for(const duration of [4.5,5,5.5])test(`fixed-5s video accepts inclusive duration ${duration}s without changing artifact bytes`,async()=>{
+ const bytes=fixtureMp4({duration});
+ const result=await probe.inspectContentResponse('video',new Response(bytes,{headers:{'content-type':'video/mp4'}}));
+ assert.equal(result.media.duration,duration);assert.equal(result.media.validation,'mp4-container-metadata');
+ assert.deepEqual(result.bytes,bytes);assert.equal(result.media.sha256,createHash('sha256').update(bytes).digest('hex'));
+});
+for(const duration of [4.499,5.501,8.08])test(`fixed-5s video rejects out-of-tolerance duration ${duration}s despite valid delivery metadata`,async()=>{
+ await assert.rejects(probe.inspectContentResponse('video',new Response(fixtureMp4({duration}),{headers:{'content-type':'video/mp4'}})),duration<4.5?/duration below 90% of requested 5 seconds/:/duration above 110% of requested 5 seconds/);
+});
+for(const [label,duration] of [['missing',undefined],['null',null],['NaN',NaN],['positive infinity',Infinity],['negative infinity',-Infinity],['string','5']])test(`fixed-5s video rejects ${label} duration metadata`,async()=>{
+ const info={codec:'avc1',width:1280,height:720,...(duration===undefined?{}:{duration})};
+ await assert.rejects(probe.inspectContentResponse('video',new Response(fixtureMp4(),{headers:{'content-type':'video/mp4'}}),{inspectVideo:async()=>info}),/duration/);
+});
+for(const codec of [undefined,null,''])test(`fixed-5s video still requires codec metadata (${String(codec)})`,async()=>{
+ await assert.rejects(probe.inspectContentResponse('video',new Response(fixtureMp4(),{headers:{'content-type':'video/mp4'}}),{inspectVideo:async()=>({codec,duration:5,width:1280,height:720})}));
+});
+for(const duration of [4.5,5,5.5,4.499,5.501,8.08])test(`offline video execution queues once and ${duration>=4.5&&duration<=5.5?'accepts':'fails'} ${duration}s artifact without retry`,async()=>{
+ const bytes=fixtureMp4({duration}),calls=[],peer='a'.repeat(40),model='reviewed-video';
+ const execute=probe.executeContentRequest({kind:'video',model,input,baseUrl:'http://127.0.0.1:8378',peer,budget:1,pollIntervalMs:1,timeoutMs:1000,fetchImpl:async(url,options)=>{
+  const path=new URL(url).pathname,body=JSON.parse(options.body);calls.push(path);
+  assert.equal(options.method,'POST');assert.equal(options.headers['x-antseed-service'],model);assert.equal(options.headers['x-antseed-pin-peer'],peer);assert.equal(options.redirect,'error');
+  if(path==='/api/v1/video/queue'){
+   assert.equal(calls.length,1,'no second generation permitted');
+   assert.deepEqual(body,JSON.parse(probe.buildContentRequest('video',model,input).body));
+   assert.equal(body.duration,'5s');assert.equal(body.resolution,'720p');assert.equal(options.headers[MAX_VIDEO_COST_HEADER],'1000000');
+   return response({queue_id:'offline-duration-job',usage:{video_generations:1}});
+  }
+  assert.equal(path,'/api/v1/video/retrieve');assert.deepEqual(body,{model,queue_id:'offline-duration-job'});assert.equal(options.headers[MAX_VIDEO_COST_HEADER],undefined);
+  assert.ok(calls.length<=3,'no retry after artifact delivery permitted');
+  return calls.length===2?response({status:'PROCESSING'}):new Response(bytes,{headers:{'content-type':'video/mp4'}});
+ }});
+ if(duration>=4.5&&duration<=5.5){
+  const result=await execute;assert.equal(result.status,200);assert.equal(result.media.duration,duration);assert.equal(result.media.validation,'mp4-container-metadata');assert.deepEqual(result.bytes,bytes);assert.deepEqual(result.createUsage,{video_generations:1});
+ }else await assert.rejects(execute,duration<4.5?/duration below 90%/:/duration above 110%/);
+ assert.deepEqual(calls,['/api/v1/video/queue','/api/v1/video/retrieve','/api/v1/video/retrieve']);assert.equal(calls.filter(path=>path.endsWith('/queue')).length,1);
+});
 test('private wallet file gate rejects public permissions and symlinks before reading',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'content-probe-test-'));
  try{const path=join(dir,'wallet.json');await writeFile(path,'{}',{mode:0o644});await assert.rejects(probe.readPrivateJson(path),/0600|private/);await chmod(path,0o600);assert.deepEqual(await probe.readPrivateJson(path),{});const link=join(dir,'link');await symlink(path,link);await assert.rejects(probe.readPrivateJson(link),/regular|symlink|private/);}finally{await rm(dir,{recursive:true,force:true});}
@@ -479,8 +517,8 @@ test('HTTP error status survives non-JSON HTML and never leaks upstream body',as
  await assert.rejects(probe.inspectContentResponse('image',new Response('<html>inf_private</html>',{status:502})),error=>error.status===502 && /HTTP 502/.test(error.message) && !error.message.includes('inf_private'));
 });
 function box(type,...parts){const body=Buffer.concat(parts),head=Buffer.alloc(8);head.writeUInt32BE(body.length+8);head.write(type,4);return Buffer.concat([head,body]);}
-function fixtureMp4(){
- const mdhd=Buffer.alloc(24);mdhd.writeUInt32BE(1000,12);mdhd.writeUInt32BE(5000,16);
+function fixtureMp4({duration=5}={}){
+ const mdhd=Buffer.alloc(24);mdhd.writeUInt32BE(1000,12);mdhd.writeUInt32BE(Math.round(duration*1000),16);
  const hdlr=Buffer.alloc(24);hdlr.write('vide',8);
  const entry=Buffer.alloc(78);entry.writeUInt16BE(1280,24);entry.writeUInt16BE(720,26);
  const stsd=box('stsd',Buffer.from([0,0,0,0,0,0,0,1]),box('avc1',entry));

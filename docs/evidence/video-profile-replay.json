@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "model": "longcat-distilled-image-to-video",
+  "verification": "Offline replay of the downloaded deployed submit bundle against the existing job's retained request and policy; not a historical packet capture",
+  "bundleSha256": "15fb655d9707d3bd28f0e09ca122cc7210d6a06f2e2a4fa223429c48689a6a3b",
+  "networkAttempts": 0,
+  "realCredentialUsed": false,
+  "normalizedDurationSeconds": 5,
+  "normalizedResolution": "720p",
+  "retainedParameterPolicy": {
+    "durationsSec": [5, 10, 15, 20, 30],
+    "resolutions": ["720p"]
+  },
+  "requestPolicyEvents": [],
+  "capturedSubmit": {
+    "url": "https://api.venice.ai/api/v1/video/queue",
+    "method": "POST",
+    "duration": "5s",
+    "resolution": "720p",
+    "imagePresent": true
+  },
+  "actualPromptAndImagePreserved": true,
+  "observedArtifact": {
+    "sha256": "a811024cece251e6eb93bcb9c5ec84beb0cc5eb4e03a5a1667fe836d7c646550",
+    "durationSeconds": 8.08,
+    "fullDecodePreviouslyPassed": true,
+    "requestedDurationFidelityPassed": false
+  },
+  "limits": [
+    "The AWS clients were inert and provider transport was a capturing synthetic response; no paid generation was submitted.",
+    "The replay proves what this downloaded deployed code generates from the retained inputs, not the historical network request or provider behavior.",
+    "It does not rule out historical bundle differences or artifact/job association defects.",
+    "Do not change the Surplus duration mapping on this evidence alone; generated-duration fidelity remains open."
+  ]
+}

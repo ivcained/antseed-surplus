@@ -36,7 +36,23 @@ At Surplus commit `2207d607e747f487a4d83e60c7f24ad677a55a7f`:
 - `libs/domain.providers/src/lib/venice-video-payload.ts:61–67` builds `duration: "5s"` when supplied the observed request and declared duration contract.
 - The same builder at lines `83–93` permits the explicit `resolution: "720p"` under the observed resolution contract.
 
-This immutable source comparison does **not** establish equality with the deployed Lambda bundle and is **not** a captured outbound wire request. The existing evidence does not localize the mismatch to the provider, the deployed adapter, or artifact selection.
+This immutable source comparison alone does **not** establish equality with the deployed Lambda bundle and is **not** a captured outbound wire request.
+
+## Downloaded deployed-bundle replay
+
+A later no-network replay used the downloaded deployed submit bundle, SHA-256 `15fb655d9707d3bd28f0e09ca122cc7210d6a06f2e2a4fa223429c48689a6a3b`, with the exact retained request and policy. AWS clients were inert and the provider transport captured a synthetic response; no real credential or paid render was used. The parent independently reran this replay with summary-file writes disabled and explicit assertions for the final submitted prompt and image.
+
+The executed normalization, payload builder, retained request-policy transform, and actual deployed `VeniceVideoAdapter.submit()` serializer produced:
+
+```json
+{"url":"https://api.venice.ai/api/v1/video/queue","method":"POST","duration":"5s","resolution":"720p"}
+```
+
+The original prompt/image were unchanged, no request-policy adaptation occurred, and blocked network attempts remained zero. See [sanitized replay evidence](../evidence/video-profile-replay.json).
+
+This narrows the issue beyond an immutable-source comparison, but is still **not a historical packet capture**. It does not prove provider fault or rule out historical bundle differences or artifact/job association defects. There is no demonstrated reason to change the Surplus duration mapping.
+
+Separately, the probe's fixed-5s acceptance check had a 4.5s lower bound but no upper bound. The repaired probe rejects durations outside the inclusive 4.5–5.5s interval, preserving the existing lower bound as an explicit ±10% tolerance. Parent verification also replayed the actual previously paid 8.08s artifact: full ffmpeg decoding passed, while the corrected probe rejected its duration. See [duration acceptance evidence](../evidence/video-duration-acceptance.json). A metadata-bound regression is not a newly generated profile-conforming video.
 
 ## Public provider contract
 
@@ -44,4 +60,4 @@ The [Venice Longcat Distilled page](https://venice.ai/models/longcat-distilled) 
 
 ## Acceptance consequence
 
-Keep native video delivery marked as passed and duration fidelity marked unresolved. Do not silently change the requested duration or count an altered/transcoded output as acceptance. The next useful localization evidence is the deployed adapter's exact sanitized outbound parameter projection or a separately budgeted controlled comparison—not repeated uninstrumented renders. No production policy or code was changed by this investigation.
+Keep native video delivery marked as passed and duration fidelity marked unresolved. Do not silently change the requested duration or count an altered/transcoded output as acceptance. The next useful localization evidence is provider-side inspection of the exact existing job or a separately budgeted, instrumented comparison—not repeated uninstrumented renders. The downloaded-bundle replay above supplies the code-generated outbound projection, but not historical wire evidence. No production policy or code was changed by this investigation.

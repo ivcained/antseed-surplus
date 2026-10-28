@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "eca6c5d23537d7d05fc2946fe03364ef87486a55",
+  "candidateSourceSha256": "d8f9df42cef370ba899adf32332a8e2ae137e13ae0e6058ef5381dc6127ec292",
+  "candidateTestSha256": "812adff1154da3103f3edd8f9307c4e9837e55e4f6083c3100a3494ec10e979c",
+  "requestProfile": {
+    "durationSeconds": 5,
+    "resolution": "720p",
+    "acceptedMinimumSeconds": 4.5,
+    "acceptedMaximumSeconds": 5.5,
+    "boundariesInclusive": true,
+    "tolerance": "explicit plus or minus 10 percent for the fixed 5-second probe"
+  },
+  "verification": {
+    "cleanSourceLockedInstallPassed": true,
+    "node": "22.22.0",
+    "nativeSqliteVerified": true,
+    "independentReviewApproved": true,
+    "independentFocusedRegressionsPassed": 21,
+    "contentProbeTestsPassed": 192,
+    "fullSuiteTestsPassed": 664,
+    "fullSuiteTestsFailed": 0,
+    "fullSuiteTestsSkipped": 0,
+    "fullSuiteTestsCancelled": 0
+  },
+  "actualPreviouslyPaidArtifact": {
+    "sha256": "a811024cece251e6eb93bcb9c5ec84beb0cc5eb4e03a5a1667fe836d7c646550",
+    "codec": "avc1",
+    "width": 960,
+    "height": 960,
+    "durationSeconds": 8.08,
+    "ffmpegFullDecodeExit": 0,
+    "correctedProbeRejected": true,
+    "error": "Delivered video duration above 110% of requested 5 seconds"
+  },
+  "newInferenceRequests": 0,
+  "newRenders": 0,
+  "limits": [
+    "The probe's automatic duration check uses MP4 container metadata, not decoded-frame timing.",
+    "The existing actual artifact was independently fully decoded; this does not turn it into a profile-conforming 5-second output.",
+    "Synthetic queue/poll/MP4 regressions verify one queue and no retry, not provider behavior or a new paid end-to-end render.",
+    "No request duration was changed, no artifact was trimmed or transcoded, and no gateway retrieval or payment behavior was changed.",
+    "Generated-video profile fidelity and video understanding remain open; controlled delivery coverage remains 10 of 11."
+  ]
+}
