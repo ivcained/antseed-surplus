@@ -1,0 +1,107 @@
+{
+  "sourceCommit": "552bd7e50d9662f55c1ef3407f9625b49a128a7b",
+  "controlledTraffic": true,
+  "publicCloneVerified": true,
+  "cleanSourceTestsPassed": 508,
+  "cases": [
+    {
+      "kind": "decision",
+      "model": "jev-1.13",
+      "startedAt": "2026-10-28T17:57:20.886Z",
+      "completedAt": "2026-10-28T17:57:43.769Z",
+      "success": true,
+      "status": 200,
+      "paidRequestSent": true,
+      "usage": {
+        "input_tokens": 333,
+        "output_tokens": 20
+      },
+      "answer": {
+        "type": "noul",
+        "noul": 0.17
+      },
+      "validation": "Requested answer ID and finite native answer schema; not independent business-answer correctness."
+    },
+    {
+      "kind": "edit",
+      "model": "muse-image-edit",
+      "startedAt": "2026-10-28T17:57:56.246Z",
+      "completedAt": "2026-10-28T17:58:49.566Z",
+      "success": true,
+      "status": 200,
+      "paidRequestSent": true,
+      "media": {
+        "mime": "image/png",
+        "width": 1600,
+        "height": 1600,
+        "bytes": 304664,
+        "sha256": "78cf0ad4f3b38a4068cfab389e6b83bf16f0a9b428f536d08f24cc91f0303c33"
+      },
+      "validation": "Bounded PNG pixel decode passed; returned image visually inspected and shows a blue square in place of red.",
+      "upstreamFinalUsageSupplied": false
+    }
+  ],
+  "settlements": {
+    "controlledTraffic": true,
+    "seller": "0x0e49122e76bD8B9ccb2FE10c0088C41Ceb608927",
+    "events": [
+      {
+        "kind": "decision",
+        "channelId": "0x12cd869e6d74a76bb13e1c8b100d444feab9ef90df5c10f3d07e591f40cee16e",
+        "transactionHash": "0x6de75ee9296284843ade3439dc9bb433c23dcc25130abd35ab5603fe663ca481",
+        "blockNumber": 53210461,
+        "confirmations": 224,
+        "grossMicro": "18",
+        "platformFeeMicro": "0",
+        "netMicro": "18",
+        "canonical": true,
+        "payoutMatched": true
+      },
+      {
+        "kind": "edit",
+        "channelId": "0x6fd7ef5d62df577bfc2bc9c828c638b2d3714e4c04d4a23b0a1edfa30d1d2ab6",
+        "transactionHash": "0xc18540530534dc9f7b5d08a4ab78fc47a62dc40bc2d91d0a7b78532f170b1c3a",
+        "blockNumber": 53210493,
+        "confirmations": 192,
+        "grossMicro": "37993",
+        "platformFeeMicro": "1519",
+        "netMicro": "36474",
+        "canonical": true,
+        "payoutMatched": true
+      }
+    ],
+    "confirmedNetMicro": "36492"
+  },
+  "passingCases": [
+    "audio-input",
+    "decision",
+    "edit",
+    "image",
+    "messages",
+    "responses",
+    "text",
+    "video",
+    "vision"
+  ],
+  "requiredCases": 11,
+  "deliverySuccessfulCases": 9,
+  "goalComplete": false,
+  "remainingDeliveryCases": [
+    "file-input",
+    "video-input"
+  ],
+  "sellerStoppedCleanly": true,
+  "listenersAfterShutdown": {
+    "6881": false,
+    "6882": false,
+    "18791": false,
+    "8378": false
+  },
+  "warnings": [
+    "Controlled traffic is not organic demand, independent external usage, or net profitability proof.",
+    "Delivery coverage is not full acceptance: video duration/profile fidelity and restart retrieval remain open.",
+    "Revenue-funded refill is separately verified in revenue-refill.json.",
+    "These outcomes follow combined source/preflight repairs; they do not retroactively identify every earlier failure cause.",
+    "Private outputs, runtime paths, credentials, job tokens, and logs are not published."
+  ]
+}

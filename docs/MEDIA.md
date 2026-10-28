@@ -104,6 +104,8 @@ External image URLs are denied unless their exact reviewed HTTPS hostname is exp
 
 ## Acceptance evidence
 
+Latest controlled public-clone delivery coverage is **9 of 11 cases**, not full acceptance. [Native decisions and image edits](evidence/native-decisions-and-edits.json) now pass with confirmed canonical payouts; [audio understanding](evidence/audio-understanding.json) and [revenue-funded replenishment](evidence/revenue-refill.json) have separate evidence. PDF and video input remain unverified. Generated-video duration/profile fidelity and restart retrieval remain open. Earlier [media results](evidence/media-progress.json) are historical attempts, not the latest status. These are controlled tests, not organic demand or profitability proof.
+
 A completed content test must establish all of the following:
 
 1. A clean anonymous clone installs the locked source and starts its own isolated seller runtime.
