@@ -1,0 +1,57 @@
+{
+  "observedAt": "2026-10-28T11:37:41.794Z",
+  "controlledBuyer": true,
+  "channelId": "0xa5082c4fe98edb5bfcffc71fd71db8c5e51130a122136f15b51e4e8f26a3df0a",
+  "buyer": "0x66fC6ca3CBC768B5d889e77Bc75eD1a79683DEC9",
+  "seller": "0x0e49122e76bD8B9ccb2FE10c0088C41Ceb608927",
+  "reservedMicro": "1000000",
+  "grossSettledMicro": "677",
+  "channelStatus": 2,
+  "netUsdcReceivedMicro": "650",
+  "surplusInferenceCostMicro": "2",
+  "settlementTx": "0x3e9e38e50d2b44ae5e2e42dd16d40f0480204e1c5accc123a2bd8782b380b5d9",
+  "topup": [
+    {
+      "hash": "0xb5cf68937eb56c9b84885afde8055f26295baf9df4777854edd9e7e8a828bf4f",
+      "status": "credit-observed",
+      "amountMicro": "100"
+    }
+  ],
+  "streamingProbe": {
+    "completedAt": "2026-10-28T11:52:25.839Z",
+    "status": 200,
+    "grossSettledMicro": "282",
+    "netUsdcReceivedMicro": "271",
+    "surplusInferenceCostMicro": "2",
+    "settlementTx": "0xeb6acd7b4b6b740fd3569bea11001997f6d54f1530bc3c0cc25d488caa4a2579"
+  },
+  "totalControlledNetRevenueMicro": "921",
+  "totalControlledInferenceCostMicro": "4",
+  "unspentControlledRevenueMicro": "821",
+  "creditVerification": "Public API pending progression and aggregate credit delta, plus independent transaction-specific production deposit row status credited with ledgerRef",
+  "cleanInstall": {
+    "node": "22.22.0",
+    "command": "npm ci --no-audit --no-fund",
+    "installedPackages": 323,
+    "testsPassed": 95,
+    "testsFailed": 0,
+    "setupNewUnfundedWallet": true,
+    "publicPriceRead": true,
+    "registrationPreview": true,
+    "monitorDryRun": true,
+    "nativeSQLite": true
+  },
+  "productionDepositVerification": {
+    "source": "Consistent read of exact surplus.usdc-deposits row via authorized read-only production IAM",
+    "ledgerRef": "deposit:8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913:0xb5cf68937eb56c9b84885afde8055f26295baf9df4777854edd9e7e8a828bf4f:827",
+    "confirmations": "20",
+    "fromAddress": "0x0e49122e76bd8b9ccb2fe10c0088c41ceb608927",
+    "status": "credited",
+    "txHash": "0xb5cf68937eb56c9b84885afde8055f26295baf9df4777854edd9e7e8a828bf4f",
+    "amountMicro": "100",
+    "creditedAt": "1793187318393",
+    "receiverAddress": "0xe7e539cbaaf854a3c753610b1a9dbf8aa03c6c12",
+    "depositId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913:0xb5cf68937eb56c9b84885afde8055f26295baf9df4777854edd9e7e8a828bf4f:827",
+    "creditedAtIso": "2026-10-28T11:35:18.393Z"
+  }
+}

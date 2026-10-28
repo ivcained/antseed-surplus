@@ -1,0 +1,29 @@
+{
+  "name": "antseed-surplus-seller",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "AntSeed seller backed by Surplus Intelligence with conservative pricing and revenue-funded credit replenishment",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test",
+    "start": "node scripts/seller.mjs",
+    "setup": "node scripts/setup.mjs",
+    "register": "node scripts/register.mjs",
+    "monitor": "node scripts/monitor.mjs",
+    "probe": "node scripts/probe.mjs",
+    "seller": "node scripts/seller.mjs",
+    "prices": "node scripts/prices.mjs",
+    "topup": "node scripts/topup.mjs",
+    "status": "node scripts/status.mjs"
+  },
+  "dependencies": {
+    "@antseed/cli": "0.1.208",
+    "@antseed/provider-openai": "0.2.53",
+    "@antseed/router-local": "0.1.50",
+    "ethers": "6.15.0"
+  }
+}
