@@ -173,6 +173,8 @@ The probe pins this seller, uses an isolated buyer HOME/state, sends one token-b
 
 ## Verification scope
 
+Fresh public-repository clone, setup, paid inference and on-chain settlement results are documented in [GITLAWB-CLONE-VERIFICATION.md](docs/GITLAWB-CLONE-VERIFICATION.md). Both normal and streaming requests were exercised using a separate funded controlled buyer; this is not organic demand.
+
 `npm test` runs offline tests with synthetic signers and mocked external reads/sends, including checkpoint preservation, explicit wallet/pricing consent, treasury settlement proofs, exact-transaction recovery, and serialized monitor behavior. Help/error CLI smokes need no credentials. Running setup or `monitor --once` against a real configured account performs network reads and private state initialization, but no transfer unless `--execute` is supplied.
 
 A controlled **self-buyer** live smoke previously returned `antseed surplus resale works` through AntSeed → this seller → SI: 677 micros AntSeed gross, 650 micros net after the 4% protocol fee, and 2 micros SI cost. Settlement: [`0x3e9e38e50d2b44ae5e2e42dd16d40f0480204e1c5accc123a2bd8782b380b5d9`](https://basescan.org/tx/0x3e9e38e50d2b44ae5e2e42dd16d40f0480204e1c5accc123a2bd8782b380b5d9). A 100-micro refill from that fresh revenue was confirmed on-chain and observed as SI credit: [`0xb5cf68937eb56c9b84885afde8055f26295baf9df4777854edd9e7e8a828bf4f`](https://basescan.org/tx/0xb5cf68937eb56c9b84885afde8055f26295baf9df4777854edd9e7e8a828bf4f). This proves the controlled routing/settlement/refill path, **not organic buyer traffic, ongoing availability, or net profit after gas**. Private request evidence and signed journals are intentionally excluded from the public project.
