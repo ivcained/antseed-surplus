@@ -97,6 +97,32 @@ test('native decisions preserve state/question map and zero-output usage without
  const f=await fixture(t,{fetchImpl:()=>Response.json(native)});const state={a:[1,'private state']},questions={ok:{type:'noul',instructions:'private question',criteria:{a:1}}};const r=await f.post('/v1/systemone',{model:'jev-a',state,questions,provider:{base_url:'https://evil'},max_tokens:8});assert.equal(r.status,200);assert.deepEqual(await r.json(),native);
  assert.equal(f.calls[0][0],'https://api.surplusintelligence.ai/v1/decisions');const body=JSON.parse(f.calls[0][1].body);assert.deepEqual(body.state,state);assert.deepEqual(body.questions,questions);assert.equal(body.provider,'api.typesafe.ai');assert.equal(body.max_tokens,8);assert.deepEqual(f.events[0].usage,native.usage);assert.doesNotMatch(JSON.stringify(f.events),/private state|private question/);
 });
+test('native decisions omit unrequested max_tokens from serialized native payload while pinning routing',async t=>{
+ const q=quotes();q.services['jev-a'].minDiscountPct=5;const f=await fixture(t,{getQuotes:()=>q,fetchImpl:()=>Response.json(native)});
+ const state={a:[1,'private state']},questions={ok:{type:'noul',criteria:{a:1}}},trace={enabled:false};
+ const r=await f.post('/v1/systemone',{model:'jev-a',state,questions,session_id:'native-session',trace,provider:'evil',providers_blocked:[],si_route:{cache:true},max_price_per_1m:999,provider_url:'https://evil',extra_body:{max_tokens:999},stream:false});
+ assert.equal(r.status,200);assert.deepEqual(await r.json(),native);assert.equal(f.calls.length,1);
+ const [url,init]=f.calls[0],payload=JSON.parse(init.body);assert.equal(url,'https://api.surplusintelligence.ai/min5/v1/decisions');assert.equal(init.headers['x-min-discount'],'5');assert.equal(Object.hasOwn(payload,'max_tokens'),false);
+ assert.deepEqual(payload,{state,questions,session_id:'native-session',trace,model:'jev-a',provider:'api.typesafe.ai',providers_blocked:['antseed'],max_price_per_1m:3,si_route:{objective:'price_without_cache',cache:false}});
+});
+for(const max_tokens of [1,settings.maxTokens])test(`native decisions preserve explicit bounded max_tokens ${max_tokens}`,async t=>{
+ const f=await fixture(t,{fetchImpl:()=>Response.json(native)});const r=await f.post('/v1/systemone',{model:'jev-a',state:'ping',questions:{ok:{type:'noul'}},max_tokens});
+ assert.equal(r.status,200);assert.equal(f.calls.length,1);assert.equal(JSON.parse(f.calls[0][1].body).max_tokens,max_tokens);
+});
+for(const alias of ['max_completion_tokens','max_output_tokens'])test(`native decisions validate ${alias} without manufacturing max_tokens`,async t=>{
+ const f=await fixture(t,{fetchImpl:()=>Response.json(native)});const r=await f.post('/v1/systemone',{model:'jev-a',state:'ping',questions:{ok:{type:'noul'}},[alias]:settings.maxTokens});
+ assert.equal(r.status,200);assert.equal(f.calls.length,1);const payload=JSON.parse(f.calls[0][1].body);assert.equal(Object.hasOwn(payload,'max_tokens'),false);assert.equal(Object.hasOwn(payload,alias),false);
+});
+test('native decisions reject invalid token bounds in every alias before dispatch even with valid max_tokens',async t=>{
+ const f=await fixture(t,{fetchImpl:()=>Response.json(native)});const body={model:'jev-a',state:'ping',questions:{ok:{type:'noul'}},max_tokens:8};
+ for(const field of ['max_tokens','max_completion_tokens','max_output_tokens'])for(const value of [0,-1,settings.maxTokens+1,1.5,null,'8',true]){
+  const r=await f.post('/v1/systemone',{...body,[field]:value});assert.equal(r.status,400,`${field}=${value}`);assert.equal((await r.json()).error.code,'token_limit');
+ }assert.equal(f.calls.length,0);
+});
+test('native decisions recheck fresh consent immediately before dispatch without an output budget',async t=>{
+ let reads=0;const f=await fixture(t,{getQuotes:()=>{const q=quotes();if(++reads===2)q.services['jev-a'].policyExpiresAt=new Date(0).toISOString();return q;},fetchImpl:()=>Response.json(native)});
+ const r=await f.post('/v1/systemone',{model:'jev-a',state:'ping',questions:{ok:{type:'noul'}}});assert.equal(r.status,503);assert.equal((await r.json()).error.code,'pricing_consent_expired');assert.equal(reads,2);assert.equal(f.calls.length,0);
+});
 test('native decisions validate questions and all requested answers; zero token rates are only allowed for decision output',async t=>{
  let value=native,q=quotes();const f=await fixture(t,{getQuotes:()=>q,fetchImpl:()=>Response.json(value)});const body={model:'jev-a',state:'ping',questions:{ok:{type:'noul'}}};
  for(const extra of [{questions:[]},{questions:{}},{questions:{ok:{type:'unknown'}}},{state:undefined},{max_tokens:33},{stream:true}])assert.equal((await f.post('/v1/systemone',{...body,...extra})).status,400);assert.equal(f.calls.length,0);
