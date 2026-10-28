@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "status": "complete for the agreed seller-bridge implementation and controlled end-to-end verification scope",
+  "goalComplete": true,
+  "verifiedSourceCommit": "728695bf11a99164f4b3c064a81f03c90a3ac80f",
+  "precedingEvidenceCommit": "fe2eeb723b533f4e9071e8bd6caafb340726d665",
+  "scopeDecision": "Following the operator clarification, the unresolved Venice generated-video duration mismatch is documented as an upstream caveat, not a requirement to repair the provider or a blocker for seller-bridge completion. Provider fault is not conclusively established.",
+  "implementedIntersection": "Configured shared content families and viable buyer protocols, not every catalog alias or every upstream parameter combination.",
+  "controlledTrafficOnly": true,
+  "organicDemandVerified": false,
+  "netProfitVerified": false,
+  "publicClone": {
+    "anonymousHttps": true,
+    "freshDestination": true,
+    "lockedInstallPassed": true,
+    "node": "22.22.0",
+    "nativeSqliteVerified": true,
+    "sourceHashesMatchedReviewedCandidate": true,
+    "fullTests": 692,
+    "fullPassed": 692,
+    "fullFailed": 0,
+    "fullSkipped": 0,
+    "fullCancelled": 0
+  },
+  "deliveryCasesPassed": 11,
+  "deliveryCasesTotal": 11,
+  "deliveryCases": [
+    {
+      "kind": "audio-input",
+      "evidence": "audio-understanding.json"
+    },
+    {
+      "kind": "decision",
+      "evidence": "native-decisions-and-edits.json"
+    },
+    {
+      "kind": "edit",
+      "evidence": "native-decisions-and-edits.json"
+    },
+    {
+      "kind": "file-input",
+      "evidence": "pdf-input-and-vertex-attempt.json"
+    },
+    {
+      "kind": "image",
+      "evidence": "media-progress.json"
+    },
+    {
+      "kind": "messages",
+      "evidence": "media-progress.json"
+    },
+    {
+      "kind": "responses",
+      "evidence": "media-progress.json"
+    },
+    {
+      "kind": "text",
+      "evidence": "media-progress.json"
+    },
+    {
+      "kind": "video",
+      "evidence": "media-progress.json"
+    },
+    {
+      "kind": "video-input",
+      "evidence": "video-input-token-budget-acceptance.json"
+    },
+    {
+      "kind": "vision",
+      "evidence": "media-progress.json"
+    }
+  ],
+  "latestPaidObjectiveEvidence": "video-input-token-budget-acceptance.json",
+  "revenueFundedReplenishment": {
+    "evidence": "revenue-refill.json",
+    "status": "credit-observed",
+    "amountMicroUsdc": 100,
+    "transactionHash": "0x6f41a786c23470963b7970e78ad628eaad8e607096e239c3d104c100781b6664",
+    "confirmationsAtVerification": 42,
+    "newRevenueOnly": true,
+    "existingHashReconciledWithoutReplacementSigning": true,
+    "creditObservationLimitation": "Authenticated API aggregate spendable balance met the stored pre-transfer balance plus 100 micros; not a transaction-specific API ledger attribution."
+  },
+  "restartRecoveryEvidence": [
+    "video-restart-retrieval.json",
+    "video-inflight-recovery.json"
+  ],
+  "onboarding": {
+    "document": "../../README.md",
+    "anonymousPublicClone": true,
+    "lockedDependencies": true,
+    "surplusKeyCreationHelper": "../../scripts/surplus-account.mjs",
+    "depositAddressInstructions": true,
+    "walletSetupRegistrationAndPricingInstructions": true,
+    "sellerAndRevenueMonitorCommands": true,
+    "noEmbeddedLiveKeysOrPrivateRuntimeState": true
+  },
+  "sourceCodeUnchangedSincePaidAcceptance": true,
+  "testServicesStopped": true,
+  "testPortsAvailableAtFinalization": true,
+  "knownLimitations": [
+    {
+      "type": "upstream-video-profile-caveat",
+      "requestedSeconds": 5,
+      "deliveredSeconds": 8.08,
+      "strictProbeAcceptsSeconds": [
+        4.5,
+        5.5
+      ],
+      "strictProbeStillRejectsExistingArtifact": true,
+      "evidence": "../research/video-profile-fidelity.md",
+      "remediationInScope": false,
+      "providerFaultProven": false
+    },
+    "All observed acceptance traffic was controlled self-buyer traffic, not organic external demand.",
+    "The seller was shut down after acceptance; completion does not leave a persistent seller or authorize background paid monitoring.",
+    "Successful transport/delivery does not certify every model, semantic output or upstream profile.",
+    "Payouts and revenue-funded refills are not net-profit proof after upstream costs, gas and hosting.",
+    "Historical attempt files retain the scope and incomplete flags recorded before the operator clarification; this manifest records the final agreed integration status."
+  ]
+}

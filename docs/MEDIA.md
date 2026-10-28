@@ -1,6 +1,6 @@
 # Shared content services
 
-> Controlled public-clone delivery evidence now covers **11 of 11 cases**, including [Vertex video understanding with a canonical payout](evidence/video-input-token-budget-acceptance.json). **The overall goal is not complete:** the earlier generated video delivered 8.08 seconds for a fixed 5-second request, outside the repaired 4.5–5.5-second acceptance interval. Delivery coverage is not fixed-profile fidelity, organic demand, or profitability proof.
+> **The agreed seller-bridge implementation and controlled end-to-end verification goal is complete.** Public-clone delivery evidence covers **11 of 11 cases**, including [Vertex video understanding with a canonical payout](evidence/video-input-token-budget-acceptance.json); revenue-funded replenishment also passed. See the [completion manifest](evidence/integration-completion.json). All observed volume was controlled self-buyer traffic, not organic demand. The earlier generated video delivered 8.08 seconds for a fixed 5-second request, outside the unchanged 4.5–5.5-second acceptance interval. That mismatch remains an upstream caveat outside the agreed bridge-fix scope, not a passing profile or proven provider fault.
 
 ## Scope
 

@@ -1,6 +1,6 @@
 # Endpoint-specific PDF and video understanding
 
-> PDF input and [Vertex video understanding](evidence/video-input-token-budget-acceptance.json) passed controlled paid AntSeed requests from fresh anonymous clones, with objective answers, native metering and confirmed canonical seller payouts. Overall controlled delivery coverage is **11/11**, but generated-video fixed-duration fidelity remains unresolved, so the overall goal is not complete. Earlier parsing and semantic failures remain separately retained. See [contract research](research/endpoint-input-contracts.md) and [current acceptance evidence](MEDIA.md#acceptance-evidence).
+> PDF input and [Vertex video understanding](evidence/video-input-token-budget-acceptance.json) passed controlled paid AntSeed requests from fresh anonymous clones, with objective answers, native metering and confirmed canonical seller payouts. Overall controlled delivery coverage is **11/11**, and the [agreed seller-bridge goal is complete](evidence/integration-completion.json). Generated-video fixed-duration fidelity remains an upstream caveat outside this completion scope; it is not relabeled as conforming output or conclusively attributed to Venice. Earlier parsing and semantic failures remain separately retained. See [contract research](research/endpoint-input-contracts.md) and [current acceptance evidence](MEDIA.md#acceptance-evidence).
 
 ## Why exact endpoints matter
 

@@ -6,7 +6,7 @@ A standalone AntSeed text-inference seller with a loopback OpenAI-compatible gat
 
 ## Shared content extension
 
-Image generation/editing, native video jobs and structured decisions are opt-in extensions with separate unit/token pricing. See [shared content configuration and acceptance gates](docs/MEDIA.md), and `examples/media.config.json`. **The extension is under validation; do not treat live supply discovery or offline tests as paid-delivery proof.** The default text-only setup below is unchanged.
+Image generation/editing, native video jobs and structured decisions are opt-in extensions with separate unit/token pricing. See [shared content configuration and acceptance gates](docs/MEDIA.md), and `examples/media.config.json`. **The agreed seller-bridge implementation and controlled verification goal is complete:** all 11 shared-content/protocol delivery cases have controlled paid AntSeed evidence, a fresh anonymous public clone passed 692 tests, and revenue-funded Surplus replenishment was exercised. See the [completion manifest](docs/evidence/integration-completion.json). This is self-buyer test volume, not organic demand or profit proof. The upstream generated-video duration mismatch remains a documented caveat, not a provider-fix commitment; strict profile checks remain unchanged. The default text-only setup below is unchanged.
 
 ## Install and configure
 

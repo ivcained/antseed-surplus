@@ -58,6 +58,6 @@ Separately, the probe's fixed-5s acceptance check had a 4.5s lower bound but no 
 
 The [Venice Longcat Distilled page](https://venice.ai/models/longcat-distilled) lists the image-to-video variant with 5–30 second clips at 720p. That supports the intended request, but it is documentation rather than execution evidence.
 
-## Acceptance consequence
+## Acceptance consequence and agreed scope
 
-Keep native video delivery marked as passed and duration fidelity marked unresolved. Do not silently change the requested duration or count an altered/transcoded output as acceptance. The next useful localization evidence is provider-side inspection of the exact existing job or a separately budgeted, instrumented comparison—not repeated uninstrumented renders. The downloaded-bundle replay above supplies the code-generated outbound projection, but not historical wire evidence. No production policy or code was changed by this investigation.
+Keep native video delivery marked as passed and duration fidelity marked unresolved. Do not silently change the requested duration or count an altered/transcoded output as acceptance. The operator subsequently clarified that repairing this apparent upstream issue is outside the seller-bridge scope; the [integration completion record](../evidence/integration-completion.json) therefore treats it as a known caveat, not a completion blocker. The two follow-up investigations were stopped, with no further paid render authorized by that scope decision. The downloaded-bundle replay supplies the code-generated outbound projection, not historical wire evidence or conclusive provider-fault attribution. The strict duration check remains unchanged; no production policy or source code was changed to make the artifact pass.
