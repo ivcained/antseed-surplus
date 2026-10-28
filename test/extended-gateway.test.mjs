@@ -33,15 +33,59 @@ test('fresh consented quotes and explicit configuration are required, without po
  for(const mutate of [q=>q.generatedAt=new Date(Date.now()-60001).toISOString(),q=>q.generatedAt=new Date(Date.now()+10000).toISOString(),q=>q.services['image-a'].policyExpiresAt=new Date(0).toISOString(),q=>q.services['image-a'].provider='evil.example',q=>q.services['image-a'].unitPriceUsd=0,q=>q.services['image-a'].estimatedUpstreamUsd=NaN,q=>q.services['image-a'].media.parameters.size='2048x2048']){q=structuredClone(quotes());mutate(q);assert.equal((await f.post('/v1/images/generations',{model:'image-a',prompt:'hello'})).status,503);}assert.equal(f.calls.length,1);
 });
 
+function reviewedMuse(){
+ const entry={model:'muse-image-edit',kind:'image',provider:'venice',inputs:['text','image'],parameters:{n:1},estimatedCostUsd:0.02,pricingBasis:'operator-estimate'};
+ const mediaConfig={version:1,reviewedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60000).toISOString(),feeCushionBps:1000,services:[entry]};
+ const q={generatedAt:new Date().toISOString(),services:{'muse-image-edit':{upstreamModel:'muse-image-edit',provider:'api.venice.ai',kind:'image',media:structuredClone(entry),policyExpiresAt:mediaConfig.expiresAt,unitPriceUsd:0.03,estimatedUpstreamUsd:0.022,pricing:{inputUsdPerMillion:0,outputUsdPerMillion:0,cachedInputUsdPerMillion:0},upstreamPricing:{inputUsdPerMillion:0,outputUsdPerMillion:0,cachedInputUsdPerMillion:0},maxPricePer1m:0}}};
+ return {settings:{mediaConfig},getQuotes:()=>q,q};
+}
+for(const format of ['JSON','multipart'])for(const count of [undefined,1])test(`reviewed Venice Muse ${format} edit omits wire n after quote overlay with caller n ${count??'absent'}`,async t=>{
+ const options=reviewedMuse(),before=structuredClone(options.q),f=await fixture(t,options);
+ const body={model:'muse-image-edit',prompt:'edit this',provider:'evil',...(count===undefined?{}:{n:count})};let result;
+ if(format==='JSON')result=await f.post('/v1/images/edits',{...body,image_url:`data:image/png;base64,${png}`});
+ else{
+  const form=new FormData();for(const [key,value]of Object.entries(body))form.set(key,String(value));form.set('image',new Blob([Buffer.from(png,'base64')],{type:'image/png'}),'source.png');
+  result=await fetch(f.base+'/v1/images/edits',{method:'POST',body:form});
+ }
+ assert.equal(result.status,200);assert.equal((await result.json()).data.length,1);assert.equal(f.calls.length,1);
+ const [url,init]=f.calls[0];assert.equal(url,'https://api.surplusintelligence.ai/v1/images/edits');
+ if(format==='JSON'){
+  const payload=JSON.parse(init.body);assert.equal(Object.hasOwn(payload,'n'),false);assert.equal(payload.provider,'api.venice.ai');assert.equal(payload.model,'muse-image-edit');assert.deepEqual(payload.providers_blocked,['antseed']);assert.deepEqual(payload.input_images,[`data:image/png;base64,${png}`]);
+ }else{
+  assert.ok(init.body instanceof FormData);const serialized=await new Response(init.body).text();assert.doesNotMatch(serialized,/name="n"/);assert.equal(init.body.has('n'),false);assert.equal(init.body.get('provider'),'api.venice.ai');assert.equal(init.body.get('model'),'muse-image-edit');assert.equal(init.headers['content-type'],undefined);assert.deepEqual(JSON.parse(init.body.get('providers_blocked')),['antseed']);assert.deepEqual(Buffer.from(await init.body.get('image').arrayBuffer()),Buffer.from(png,'base64'));
+ }
+ assert.deepEqual(options.q,before);assert.deepEqual(options.q.services['muse-image-edit'].media.parameters,{n:1});assert.deepEqual(options.settings.mediaConfig.services[0].parameters,{n:1});assert.equal(f.events[0].usage.buyer_cost_micro,20000);
+});
+test('reviewed Muse edit still rejects non-one counts before dispatch in both input formats',async t=>{
+ const f=await fixture(t,reviewedMuse());
+ for(const n of [0,2,-1,1.5,'1',null,true]){
+  const r=await f.post('/v1/images/edits',{model:'muse-image-edit',prompt:'edit',image_url:`data:image/png;base64,${png}`,n});assert.equal(r.status,400);assert.equal((await r.json()).error.code,'image_count_limit');
+ }
+ for(const n of ['0','2','-1','1.0','01','true','']){
+  const form=new FormData();form.set('model','muse-image-edit');form.set('prompt','edit');form.set('n',n);form.set('image',new Blob([Buffer.from(png,'base64')],{type:'image/png'}),'source.png');
+  const r=await fetch(f.base+'/v1/images/edits',{method:'POST',body:form});assert.equal(r.status,400);assert.equal((await r.json()).error.code,'image_count_limit');
+ }assert.equal(f.calls.length,0);
+});
+test('reviewed Muse edit retains single-output response validation and exact consent bindings',async t=>{
+ const options=reviewedMuse(),f=await fixture(t,{...options,fetchImpl:()=>Response.json({data:[{b64_json:png},{b64_json:png}]})}),body={model:'muse-image-edit',prompt:'edit',image_url:`data:image/png;base64,${png}`};
+ const r=await f.post('/v1/images/edits',body);assert.equal(r.status,502);assert.equal((await r.json()).error.code,'upstream_invalid_response');assert.equal(f.calls.length,1);
+ const valid=structuredClone(options.q);for(const mutate of [q=>q.services['muse-image-edit'].provider='venice',q=>q.services['muse-image-edit'].upstreamModel='other',q=>q.services['muse-image-edit'].media.parameters.n=2,q=>q.services['muse-image-edit'].policyExpiresAt=new Date(0).toISOString()]){
+  Object.assign(options.q,structuredClone(valid));mutate(options.q);assert.equal((await f.post('/v1/images/edits',body)).status,503);
+ }assert.equal(f.calls.length,1);
+});
+test('Muse model on another pinned provider retains n',async t=>{
+ const options=reviewedMuse();options.settings.mediaConfig.services[0].provider='typesafe';options.q.services['muse-image-edit'].media.provider='typesafe';options.q.services['muse-image-edit'].provider='api.typesafe.ai';
+ const f=await fixture(t,options);assert.equal((await f.post('/v1/images/edits',{model:'muse-image-edit',prompt:'edit',image_url:`data:image/png;base64,${png}`})).status,200);assert.equal(JSON.parse(f.calls[0][1].body).n,1);
+});
 test('JSON edits normalize image inputs with fixed pricing parameters, refusing unsafe URLs and masks',async t=>{
  const f=await fixture(t);const body={model:'edit-a',prompt:'edit',image_url:`data:image/png;base64,${png}`};
- assert.equal((await f.post('/v1/images/edits',body)).status,200);const payload=JSON.parse(f.calls[0][1].body);assert.deepEqual(payload.input_images,[body.image_url]);assert.equal(payload.size,'1024x1024');
+ assert.equal((await f.post('/v1/images/edits',body)).status,200);const payload=JSON.parse(f.calls[0][1].body);assert.deepEqual(payload.input_images,[body.image_url]);assert.equal(payload.size,'1024x1024');assert.equal(payload.n,1);
  for(const extra of [{mask:'bad'},{mask_url:'https://example.com/a.png'},{image_url:'http://example.com/a.png'},{image_url:'https://127.0.0.1/a.png'},{image_url:'https://169.254.169.254/a'},{image_url:'https://user:pass@example.com/a.png'},{image_url:'file:///private'},{image_url:'data:text/html;base64,PGgxPg=='},{image_url:'data:image/png;base64,aGVsbG8='},{image_url:undefined},{input_images:Array(9).fill(body.image_url)},{model:'image-a'}]){assert.ok((await f.post('/v1/images/edits',{...body,...extra})).status>=400,JSON.stringify(extra));}assert.equal(f.calls.length,1);
 });
 test('multipart edits preserve binary images, replace routing fields and reject malformed MIME/masks',async t=>{
  const f=await fixture(t);const make=(type='image/png',bytes=Buffer.from(png,'base64'))=>{const b=new FormData();b.set('model','edit-a');b.set('prompt','edit this');b.set('provider','evil');b.set('provider_base_url','https://evil');b.set('image',new Blob([bytes],{type}),'source.png');return b;};
  const result=await fetch(f.base+'/v1/images/edits',{method:'POST',body:make(),headers:{authorization:'Bearer local-private'}});assert.equal(result.status,200);
- const init=f.calls[0][1];assert.ok(init.body instanceof FormData);assert.equal(init.headers['content-type'],undefined);assert.equal(init.body.get('provider'),'api.venice.ai');assert.equal(init.body.get('provider_base_url'),null);assert.equal(init.body.get('model'),'edit-a');assert.deepEqual(Buffer.from(await init.body.get('image').arrayBuffer()),Buffer.from(png,'base64'));
+ const init=f.calls[0][1];assert.ok(init.body instanceof FormData);assert.equal(init.headers['content-type'],undefined);assert.equal(init.body.get('provider'),'api.venice.ai');assert.equal(init.body.get('provider_base_url'),null);assert.equal(init.body.get('model'),'edit-a');assert.equal(init.body.get('n'),'1');assert.deepEqual(Buffer.from(await init.body.get('image').arrayBuffer()),Buffer.from(png,'base64'));
  for(const b of [make('text/html'),make('image/png',Buffer.from('not png')),(()=>{const b=make();b.set('mask',new Blob(['bad']),'mask.png');return b;})(),(()=>{const b=make();b.append('model','image-a');return b;})()])assert.ok((await fetch(f.base+'/v1/images/edits',{method:'POST',body:b})).status>=400);assert.equal(f.calls.length,1);
 });
 test('image errors, empty artifacts, invalid encodings and credential URLs are sanitized with no retry',async t=>{
@@ -106,7 +150,7 @@ test('video endpoints delegate only trusted quote/service bindings and expose no
 
 test('actual media pricing uses family names inside config/media but canonical host in the routing quote',async t=>{
  const entry={...image,provider:'venice',parameters:{n:1,size:'1024x1024'}};const q=quotes();q.services['image-a'].media={...entry,parameters:{size:'1024x1024',n:1}};q.services['image-a'].maxPricePer1m=0;
- const f=await fixture(t,{settings:{mediaConfig:{services:[entry]}},getQuotes:()=>q});assert.equal((await f.post('/v1/images/generations',{model:'image-a',prompt:'hi'})).status,200);assert.equal(JSON.parse(f.calls[0][1].body).provider,'api.venice.ai');
+ const f=await fixture(t,{settings:{mediaConfig:{services:[entry]}},getQuotes:()=>q});assert.equal((await f.post('/v1/images/generations',{model:'image-a',prompt:'hi'})).status,200);assert.equal(JSON.parse(f.calls[0][1].body).provider,'api.venice.ai');assert.equal(JSON.parse(f.calls[0][1].body).n,1);
 });
 test('native decisions preserve alpha finite doubles, boolean choices, extras and genuine absent usage',async t=>{
  const answer={answers:{p:{type:'noul',noul:1.0000000002},c:{type:'choice',choice:true,probabilities:{true:0.8,false:0.2},confidence:0.8},s:{type:'score',score:5,confidence:1}}};const f=await fixture(t,{fetchImpl:()=>Response.json(answer)});const r=await f.post('/v1/systemone',{model:'jev-a',state:[],questions:{p:{type:'noul'},c:{type:'choice'},s:{type:'score'}},session_id:'native-private-session',trace:{enabled:false},provider_order:['evil'],provider_url:'https://evil'});assert.equal(r.status,200);assert.deepEqual(await r.json(),answer);const payload=JSON.parse(f.calls[0][1].body);assert.equal(payload.session_id,'native-private-session');assert.deepEqual(payload.trace,{enabled:false});assert.equal(payload.provider_order,undefined);assert.equal(payload.provider_url,undefined);assert.equal(f.events[0].usage,undefined);
