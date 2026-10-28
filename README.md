@@ -1,12 +1,36 @@
-# AntSeed seller backed by Surplus Intelligence
+# Multimodal AntSeed seller backed by Surplus Intelligence
 
-A standalone AntSeed text-inference seller with a loopback OpenAI-compatible gateway to Surplus Intelligence (SI). Default model: **`openai-gpt-oss-120b`**. The seller and the balance/topup monitor are separate processes. This project does not modify another AntSeed/Venice installation.
+A standalone **multimodal AntSeed seller** with a private loopback gateway to Surplus Intelligence (SI). It supports text, image generation and editing, image-to-video generation, image/audio/PDF/video understanding, and structured decisions through the configured shared AntSeed/SI protocols. The seller and the balance/topup monitor are separate processes. This project does not modify another AntSeed/Venice installation.
+
+**The default configuration is text-only** (`openai-gpt-oss-120b`). Other modalities are implemented but must be explicitly configured with reviewed models, routes and pricing; cloning the project does not automatically enable every service.
 
 **Pricing is an explicitly accepted estimate, not a guaranteed-profit strategy.** SI's public orderbook omits full per-offer cache rates and account fees. Provider pinning is not exact-offer pinning, and `max_price_per_1m` may be ignored with minimum-discount routing. Without a reviewed pricing policy the application fails closed rather than inventing a safe price.
 
-## Shared content extension
+## Supported modalities and protocols
 
-Image generation/editing, native video jobs and structured decisions are opt-in extensions with separate unit/token pricing. See [shared content configuration and acceptance gates](docs/MEDIA.md), and `examples/media.config.json`. **The agreed seller-bridge implementation and controlled verification goal is complete:** all 11 shared-content/protocol delivery cases have controlled paid AntSeed evidence, a fresh anonymous public clone passed 692 tests, and revenue-funded Surplus replenishment was exercised. See the [completion manifest](docs/evidence/integration-completion.json). This is self-buyer test volume, not organic demand or profit proof. The upstream generated-video duration mismatch remains a documented caveat, not a provider-fix commitment; strict profile checks remain unchanged. The default text-only setup below is unchanged.
+Controlled paid AntSeed verification covers **11 shared-content/protocol delivery cases**:
+
+- **Text:** Chat Completions, OpenAI Responses and Anthropic Messages.
+- **Images:** image generation and image editing.
+- **Video generation:** image-to-video through native asynchronous queue/retrieve jobs.
+- **Media understanding:** image/vision input, audio input, PDF file input and video input to compatible text models.
+- **Structured decisions:** native SystemOne requests translated to Surplus decisions.
+
+These are reviewed model/endpoint profiles, not a promise that every catalog model supports every modality. Audio understanding is not audio generation. Audio/music generation, dedicated transcription and embeddings are outside the currently implemented shared paid API surface.
+
+### Choose what to offer
+
+1. **Text only:** follow the installation and setup below; the default model and conservative pricing flow are unchanged.
+2. **Image generation/editing, video generation or structured decisions:** follow [shared content configuration](docs/MEDIA.md#enable-reviewed-media-profiles), starting from [`examples/media.config.json`](examples/media.config.json). Configure `MEDIA_CONFIG_FILE` explicitly; do not put these services into the default `MODELS` list.
+3. **Image/audio/PDF/video understanding or additional text protocols:** configure compatible token-billed models and their reviewed protocols/routes. See [shared content services and probes](docs/MEDIA.md) and [exact OpenAI PDF / Google audio / Vertex video routes](docs/ENDPOINT_INPUTS.md), with [`examples/endpoint-pricing-policy.json`](examples/endpoint-pricing-policy.json) as the endpoint-specific policy example. Keep token-billed models in `MODELS`; media understanding does not require enabling a dummy generation service.
+
+Review the example policies, replace their intentionally invalid/expired review timestamps, inspect `npm run prices` results, and restart the seller after configuration changes. See the linked guides for exact setup and safety requirements.
+
+### Verification and known limits
+
+All **11/11 delivery cases** have controlled paid AntSeed evidence, a fresh anonymous public clone passed **692 tests**, and revenue-funded Surplus replenishment was exercised. See the [completion manifest](docs/evidence/integration-completion.json) and [modality acceptance evidence](docs/MEDIA.md#acceptance-evidence). This is **self-buyer test volume, not organic demand or profit proof**; test services were stopped after verification.
+
+**Generated-video caveat:** one requested 5-second video delivered 8.08 seconds. Delivery and settlement were verified, but the output still fails the unchanged 4.5–5.5-second profile check. The mismatch is documented as an upstream caveat outside the agreed bridge-fix scope, not a passing profile or conclusively proven provider fault.
 
 ## Install and configure
 
@@ -232,7 +256,9 @@ Preserve and back up the entire private `.state` directory, especially the reven
 
 For read-only status, use `node scripts/status.mjs --env .env`. Help is available with `node scripts/setup.mjs --help`, `node scripts/monitor.mjs --help`, and `node scripts/topup.mjs --help`.
 
-## Optional paid acceptance probe
+## Optional paid text acceptance probe
+
+The commands in this section test text only. For image generation/editing, native video, structured decisions and media-understanding probes, use the [bounded shared-content probe guide](docs/MEDIA.md#bounded-controlled-buyer-probes) and [PDF/video-input checks](docs/ENDPOINT_INPUTS.md#bounded-paid-checks). Paid probes require explicit authorization and consume real credit; do not start a seller or paid test merely to read these instructions.
 
 This uses a **separate funded AntSeed buyer**, not the seller wallet, and spends real buyer deposits. It does not fund, sweep, or register that buyer for you. Point `TEST_BUYER_WALLET_FILE` at an owner-only JSON buyer wallet. The AntSeed buyer needs sufficient already deposited USDC; on the audited deployment its first deposit minimum was 1 USDC net, and the optional gasless sweep fee was 0.05 USDC.
 
@@ -245,7 +271,7 @@ The probe pins this seller, uses an isolated buyer HOME/state, sends one token-b
 
 ## Verification scope
 
-Fresh public-repository clone, setup, paid inference and on-chain settlement results are documented in [GITLAWB-CLONE-VERIFICATION.md](docs/GITLAWB-CLONE-VERIFICATION.md). Both normal and streaming requests were exercised using a separate funded controlled buyer; this is not organic demand.
+The [integration completion manifest](docs/evidence/integration-completion.json) records all 11 controlled delivery cases and revenue-funded replenishment. Per-modality paid delivery, understanding, metering and canonical settlement evidence is linked from [shared-content acceptance evidence](docs/MEDIA.md#acceptance-evidence). The earlier [public-clone verification report](docs/GITLAWB-CLONE-VERIFICATION.md) covers initial setup and normal/streaming text requests. All of these used a separate funded controlled buyer; none establishes organic demand.
 
 `npm test` runs offline tests with synthetic signers and mocked external reads/sends, including checkpoint preservation, explicit wallet/pricing consent, treasury settlement proofs, exact-transaction recovery, and serialized monitor behavior. Help/error CLI smokes need no credentials. Running setup or `monitor --once` against a real configured account performs network reads and private state initialization, but no transfer unless `--execute` is supplied.
 
