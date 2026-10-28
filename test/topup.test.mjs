@@ -116,6 +116,81 @@ test('dry run verifies fresh payout revenue but never signs or sends', async (t)
   assert.equal(f.state.signed, 0);
   assert.equal(f.state.sent, 0);
 });
+test('canonical revenue scan covers an aged checkpoint within the Base public RPC 1000-block limit', async (t) => {
+  const f = fixture(t);
+  const head = 2517;
+  const confirmations = 3;
+  const hashFor = (n) => '0x' + n.toString(16).padStart(64, '0');
+  const logs = [];
+  const receipts = new Map();
+  const expectedReceiptHashes = [];
+  const addTransfer = (blockNumber, amount, { outgoing = false, settled = true } = {}) => {
+    const hash = hashFor(logs.length + 1);
+    const log = { ...transferLog(outgoing ? sellerWallet.address : payout,
+      outgoing ? receiver : sellerWallet.address, amount, hash), blockNumber, blockHash: hashFor(blockNumber + 10000) };
+    logs.push(log);
+    receipts.set(hash, { status: 1, hash, blockNumber, blockHash: log.blockHash,
+      logs: [log, ...(!outgoing && settled ? [settlementLog(amount)] : [])] });
+    if (outgoing || blockNumber <= head - confirmations + 1) expectedReceiptHashes.push(hash);
+  };
+  // Both sides of each chunk boundary, the first block, and the last confirmed block.
+  for (const [block, amount] of [[11, 110000n], [1010, 120000n], [1011, 130000n],
+    [2010, 140000n], [2011, 150000n], [2515, 160000n]]) addTransfer(block, amount);
+  addTransfer(1510, 900000n, { settled: false }); // A canonical transfer alone is not revenue.
+  addTransfer(2516, 800000n); // Unconfirmed income must not fund a topup.
+  addTransfer(1010, 50000n, { outgoing: true });
+  addTransfer(2011, 60000n, { outgoing: true });
+  addTransfer(head, 70000n, { outgoing: true }); // Even unconfirmed outflows consume budget.
+  const queries = [];
+  const receiptReads = [];
+  const canonicalReads = [];
+  f.provider.getBlockNumber = async () => head;
+  f.provider.getBlock = async (block) => {
+    canonicalReads.push(block);
+    return { hash: hashFor(block + 10000) };
+  };
+  f.provider.getLogs = async (query) => {
+    const { fromBlock, toBlock, topics } = query;
+    queries.push(query);
+    if (toBlock - fromBlock + 1 > 1000) {
+      throw Object.assign(new Error('Block range too large for public access: maximum 1000 blocks'), { code: -32602 });
+    }
+    assert.equal(query.address, topup.USDC);
+    assert.equal(topics[0], token.getEvent('Transfer').topicHash);
+    const incoming = Array.isArray(topics[1]);
+    assert.deepEqual(topics.slice(1), incoming
+      ? [[zeroPadValue(payout, 32)], zeroPadValue(sellerWallet.address, 32)]
+      : [zeroPadValue(sellerWallet.address, 32)]);
+    const matches = logs.filter((log) => log.blockNumber >= fromBlock && log.blockNumber <= toBlock &&
+      (incoming ? log.topics[2] === topics[2] && topics[1].includes(log.topics[1]) : log.topics[1] === topics[1]));
+    return matches.flatMap((log) => [log, log]); // Duplicate RPC results must not inflate either side.
+  };
+  f.provider.getTransactionReceipt = async (hash) => {
+    receiptReads.push(hash);
+    assert.ok(receipts.has(hash), 'only fixture receipts may be read');
+    return receipts.get(hash);
+  };
+  const result = await topup.executeTopup({ ...f.config, confirmations }, f.adapters);
+  assert.equal(result.status, 'dry-run');
+  assert.equal(result.confirmedThroughBlock, 2515);
+  assert.equal(result.remainingRevenueMicro, '630000'); // 810000 income - 180000 outflows.
+  assert.equal(result.amountMicro, '630000');
+  for (const incoming of [true, false]) {
+    const ranges = queries.filter((query) => Array.isArray(query.topics[1]) === incoming);
+    const coverage = ranges.flatMap(({ fromBlock, toBlock }) => {
+      assert.ok(toBlock >= fromBlock && toBlock - fromBlock + 1 <= 1000);
+      return Array.from({ length: toBlock - fromBlock + 1 }, (_, i) => fromBlock + i);
+    });
+    assert.deepEqual(coverage, Array.from({ length: head - f.config.startBlock }, (_, i) => f.config.startBlock + i + 1),
+      'each direction must cover every block after the checkpoint exactly once through head');
+  }
+  assert.deepEqual(receiptReads.toSorted(), expectedReceiptHashes.toSorted(), 'deduplicate logs before receipt reads');
+  assert.deepEqual(canonicalReads.toSorted((a, b) => a - b), [f.config.startBlock,
+    ...expectedReceiptHashes.map((hash) => receipts.get(hash).blockNumber)].toSorted((a, b) => a - b));
+  assert.equal(f.state.signed, 0);
+  assert.equal(f.state.sent, 0);
+});
+
 test('only native USDC from explicit payout contracts after checkpoint is counted', async (t) => {
   const f = fixture(t);
   f.state.logs = [f.state.income, f.state.income,
