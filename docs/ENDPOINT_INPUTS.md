@@ -1,0 +1,63 @@
+# Endpoint-specific PDF and video understanding
+
+> Candidate implementation; independent review and paid public-clone acceptance are still required. These instructions do not upgrade the recorded 9/11 live coverage. See [contract research](research/endpoint-input-contracts.md) and [current acceptance evidence](MEDIA.md#acceptance-evidence).
+
+## Why exact endpoints matter
+
+AI Studio and Vertex both use marketplace provider ID `google`, but their documented Chat media envelopes differ. A generic Google pin is not sufficient.
+
+- PDF input uses OpenAI Chat `file.file_data`, pinned to `api.openai.com`.
+- Video input uses Vertex Chat `input_audio`, with `format: "video/mp4"` and `data: "data:video/mp4;base64,..."`, pinned to `aiplatform.googleapis.com`.
+- The existing AI Studio WAV/MP3 input keeps raw Base64 and `format: "wav"` or `"mp3"`, pinned to `generativelanguage.googleapis.com`.
+
+No text extraction, video-frame extraction, transcoding, or Gemini-native request rewrite is performed. Original binary input bytes are preserved in the documented Chat envelope.
+
+## Configure the exact model routes
+
+Follow the README wallet/key/network setup first. Never place credentials in these examples.
+
+1. Copy `examples/endpoint-pricing-policy.json` to `.state/endpoint-pricing-policy.json`.
+2. Review the provider contracts, live healthy supply, reference cards, fee assumptions and estimates. Replace the intentionally expired timestamps with your current review time and an expiry no more than 24 hours later. Do not treat the example's source revision as proof of equality with deployed Surplus code.
+3. Set these private `.env` fields:
+
+   ```dotenv
+   MODELS=gpt-4o,gemini-2.5-flash,gemini-2.5-pro
+   PRICING_POLICY_FILE=.state/endpoint-pricing-policy.json
+   ```
+
+   Retain any independently reviewed `MEDIA_CONFIG_FILE` for unit-billed image/video generation; these three models belong in the token-billed `MODELS` list, not the media list. Remove routes from `modelRoutes` if removing their exact models from `MODELS`.
+4. Run `npm run prices` before starting. Confirm the emitted `services` entries pin:
+   - `gpt-4o` → `api.openai.com`.
+   - `gemini-2.5-flash` → `generativelanguage.googleapis.com`.
+   - `gemini-2.5-pro` → `aiplatform.googleapis.com`.
+5. Start the seller with `npm start`; restart after configuration changes. Do not run another seller with the same identity concurrently.
+
+The example deliberately uses different exact Gemini model identifiers for AI Studio audio and Vertex video. One exact model has one quoted endpoint in a seller. Changing an existing model's route does not preserve its previously tested input contract automatically.
+
+`modelRoutes` entries accept only `{ "provider", "host" }` for exact configured models and reviewed provider/hostname pairs. No wildcard, arbitrary URL, suffix, port or per-route expiry/economics override is allowed. Without an explicit Google route, Google retains the AI Studio default. Live-book pricing remains limited to the separately reviewed Groq cache-at-input policy.
+
+### Reference estimates, not guaranteed costs
+
+At the observed public-book check, `gpt-4o` had direct OpenAI supply but no OpenAI reference card in `/v1/prices`. The example explicitly permits a Venice reference-card fallback while retaining the actual OpenAI execution host. This is an operator-consented reference envelope, not an OpenAI tariff or an exact-offer charge ceiling. If you do not accept this fallback, remove it: the route must remain unavailable when required reference/cache evidence is missing. Never substitute zero for missing evidence.
+
+Public supply changes. Missing/unhealthy/exhausted supply or incomplete rate evidence must leave the service unavailable. Quotes remain `guaranteedBound:false`; provider pins do not select an exact offer or guarantee profitability.
+
+## Bounded paid checks
+
+Use a distinct funded buyer wallet and the existing mandatory ReserveAuth budget guard. Commands without `--execute` remain offline plans; explicit execution is required for payment. Start the seller first and run shared-wallet buyers serially.
+
+For a PDF whose visible text includes `Antseed content probe works.`, set `TEST_EXPECT_CONTAINS=Antseed content probe works.` and an explicit small `TEST_MAX_COST_USD` in the private `.env`, then:
+
+```sh
+npm run content-probe -- --kind file-input --model gpt-4o --input /absolute/path/to/fixture.pdf --execute
+```
+
+For an MP4 with an unambiguous red scene, set `TEST_EXPECT_CONTAINS=red` and the explicit budget, then:
+
+```sh
+npm run content-probe -- --kind video-input --model gemini-2.5-pro --input /absolute/path/to/red.mp4 --execute
+```
+
+These are examples, not published passing runs. Inputs must satisfy the existing regular-file, format and 1 MiB probe limits. An expected substring is only a bounded semantic check for a controlled known fixture; do not treat an arbitrary substring as general media-understanding certification. A failed semantic check may still incur a charge.
+
+Both controlled probes reject missing, wrong or malformed quoted endpoints before buyer startup and recheck quotes immediately before dispatch. The existing exact AntSeed registered-provider/model/peer, module-version and cumulative authorization guards remain required. Confirm persisted metering, canonical channel settlement and seller payout separately from HTTP/content success. Controlled self-buyer traffic is not organic demand or actual profit.

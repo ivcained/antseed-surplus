@@ -230,6 +230,23 @@ test('quote gate rejects wrong model/kind, stale prices, expired policy and over
  const expired=quotes();expired.services.image.policyExpiresAt='2000-01-01';assert.throws(()=>probe.validateProbeQuote(settings,expired,'image','image',1),/expired/i);
  const costly=quotes();costly.services.image.unitPriceUsd=2;assert.throws(()=>probe.validateProbeQuote(settings,costly,'image','image',1),/budget/i);
 });
+for(const [kind,host,otherHost] of [['file-input','api.openai.com','aiplatform.googleapis.com'],['video-input','aiplatform.googleapis.com','api.openai.com']]){
+ test(`${kind} quote accepts only its reviewed exact upstream host without guessing a model`,()=>{
+  const snapshot=quotes();snapshot.services.text={pricing:price,provider:host,media:{inputs:[kind==='file-input'?'file':'video']}};
+  assert.equal(probe.validateProbeQuote(settings,snapshot,kind,'text',1),snapshot.services.text);
+ });
+ for(const [label,provider] of [['missing',undefined],['null',null],['family','google'],['AI Studio','generativelanguage.googleapis.com'],['other reviewed host',otherHost],['wrong host','other.example'],['case',host.toUpperCase()],['whitespace',` ${host} `],['URL',`https://${host}`],['suffix',`${host}.example`],['trailing dot',`${host}.`]]){
+  test(`${kind} quote rejects ${label} provider before controlled dispatch`,async()=>{
+   const snapshot=quotes();snapshot.services.text={pricing:price,...(provider===undefined?{}:{provider})};
+   let dispatches=0;
+   await assert.rejects(async()=>{
+    probe.validateProbeQuote(settings,snapshot,kind,'text',1);
+    await probe.executeContentRequest({kind,model:'text',input:{bytes:Buffer.from('original bytes'),mime:kind==='file-input'?'application/pdf':'video/mp4'},baseUrl:'http://127.0.0.1:8378',budget:1,expectedContains:'fixture',fetchImpl:async()=>{dispatches++;return response({choices:[{message:{content:'fixture'}}]});}});
+   },/file-input requires.*api\.openai\.com|video-input requires.*aiplatform\.googleapis\.com/);
+   assert.equal(dispatches,0);
+  });
+ }
+}
 test('buyer config caps payments and copies exact service prices, not old floor defaults',()=>{
  const config=probe.buildBuyerConfig(settings,quotes().services.video,'video',1,8378,'a'.repeat(40));
  assert.deepEqual(config.buyer.maxPricing.defaults,price);
@@ -294,9 +311,45 @@ test('decision response does not substitute for unrelated text protocol content'
 test('text wrappers and understanding preserve native nested input families',()=>{
  assert.equal(probe.buildContentRequest('responses','text').path,'/v1/responses');assert.equal(JSON.parse(probe.buildContentRequest('responses','text').body).max_output_tokens,64);
  assert.equal(probe.buildContentRequest('messages','text').path,'/v1/messages');
- for(const [kind,type,mime] of [['vision','image_url','image/png'],['audio-input','input_audio','audio/wav'],['file-input','file','application/pdf'],['video-input','video_url','video/mp4']]){
+ for(const [kind,type,mime] of [['vision','image_url','image/png'],['audio-input','input_audio','audio/wav'],['file-input','file','application/pdf'],['video-input','input_audio','video/mp4']]){
  const request=JSON.parse(probe.buildContentRequest(kind,'text',{...input,mime,name:'fixture'}).body);assert.equal(request.messages[0].content[1].type,type);assert.equal(request.max_tokens,64);
  }
+});
+test('OpenAI PDF Chat file envelope preserves every original byte without text extraction',async()=>{
+ const bytes=Buffer.concat([Buffer.from('%PDF-1.7\n%'),Buffer.from([0,128,255,13,10]),Buffer.from('opaque original document\n%%EOF\n')]);
+ const dir=await mkdtemp(join(tmpdir(),'content-probe-pdf-'));
+ try{
+  const path=join(dir,'opaque.pdf');await writeFile(path,bytes);
+  const original=await probe.readProbeInput(path,'file-input');assert.equal(original.mime,'application/pdf');assert.deepEqual(original.bytes,bytes);
+  const request=probe.buildContentRequest('file-input','reviewed-exact-model',original);
+  assert.equal(request.path,'/v1/chat/completions');assert.deepEqual(request.headers,{'content-type':'application/json'});
+  const data=`data:application/pdf;base64,${bytes.toString('base64')}`;
+  assert.deepEqual(JSON.parse(request.body),{model:'reviewed-exact-model',messages:[{role:'user',content:[{type:'text',text:'Read the text in this short document.'},{type:'file',file:{filename:'fixture.pdf',file_data:data}}]}],max_tokens:64,temperature:0});
+  assert.deepEqual(Buffer.from(JSON.parse(request.body).messages[0].content[1].file.file_data.split(',')[1],'base64'),bytes);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('Vertex video Chat generic input_audio blob preserves original MP4 bytes and full MIME',async()=>{
+ const bytes=realMp4,dir=await mkdtemp(join(tmpdir(),'content-probe-video-input-'));
+ try{
+  const path=join(dir,'original.mp4');await writeFile(path,bytes);
+  const original=await probe.readProbeInput(path,'video-input');assert.equal(original.mime,'video/mp4');assert.deepEqual(original.bytes,bytes);
+  const request=probe.buildContentRequest('video-input','reviewed-exact-model',original);
+  assert.equal(request.path,'/v1/chat/completions');assert.deepEqual(request.headers,{'content-type':'application/json'});
+  const data=`data:video/mp4;base64,${bytes.toString('base64')}`;
+  assert.deepEqual(JSON.parse(request.body),{model:'reviewed-exact-model',messages:[{role:'user',content:[{type:'text',text:'Describe the predominant color and motion in this short video.'},{type:'input_audio',input_audio:{format:'video/mp4',data}}]}],max_tokens:64,temperature:0});
+  assert.deepEqual(Buffer.from(JSON.parse(request.body).messages[0].content[1].input_audio.data.split(',')[1],'base64'),bytes);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
+for(const [mime,format] of [['audio/wav','wav'],['audio/mpeg','mp3']])test(`AI Studio ${format} audio keeps raw base64 and short format unchanged`,()=>{
+ const bytes=Buffer.from([0,128,255,13,10]),request=probe.buildContentRequest('audio-input','reviewed-exact-model',{bytes,mime});
+ assert.deepEqual(JSON.parse(request.body),{model:'reviewed-exact-model',messages:[{role:'user',content:[{type:'text',text:'Transcribe the spoken words in this short audio.'},{type:'input_audio',input_audio:{data:bytes.toString('base64'),format}}]}],max_tokens:64,temperature:0});
+ const snapshot=quotes();snapshot.services.text.provider='generativelanguage.googleapis.com';
+ assert.equal(probe.validateProbeQuote(settings,snapshot,'audio-input','text',1),snapshot.services.text);
+});
+for(const kind of ['file-input','video-input'])test(`${kind} retains mandatory objective response checks`,async()=>{
+ await assert.rejects(probe.inspectContentResponse(kind,response({choices:[{message:{content:'red'}}]})),/TEST_EXPECT_CONTAINS/);
+ await assert.rejects(probe.inspectContentResponse(kind,response({choices:[{message:{content:'blue'}}]}),{expectedContains:'red'}),/expected objective answer/);
+ const result=await probe.inspectContentResponse(kind,response({choices:[{message:{content:'RED'}}]}),{expectedContains:'red'});assert.equal(result.answerMatched,true);
 });
 test('validates actual image bytes and dimensions, not URLs/JSON masquerading as content',async()=>{
  const result=await probe.inspectContentResponse('image',response({data:[{b64_json:png.toString('base64')}],usage:{output_images:1}}));

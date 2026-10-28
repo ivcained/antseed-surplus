@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "allowEstimates": true,
+  "provider": "google",
+  "basis": "reference-envelope",
+  "reviewedAt": "2000-01-01T00:00:00.000Z",
+  "expiresAt": "2000-01-01T01:00:00.000Z",
+  "sourceRevision": "2207d607e747f487a4d83e60c7f24ad677a55a7f",
+  "feeCushionBps": 1000,
+  "offerMultiplierCeiling": 2,
+  "referenceFallback": true,
+  "referenceProvider": "venice",
+  "modelRoutes": {
+    "gpt-4o": {
+      "provider": "openai",
+      "host": "api.openai.com"
+    },
+    "gemini-2.5-flash": {
+      "provider": "google",
+      "host": "generativelanguage.googleapis.com"
+    },
+    "gemini-2.5-pro": {
+      "provider": "google",
+      "host": "aiplatform.googleapis.com"
+    }
+  }
+}

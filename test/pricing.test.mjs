@@ -167,3 +167,112 @@ test('repricer explicitly covers AntSeed protocol fee before targeting net gross
 });
 // The real public API cannot support a positive profit-bound test: its missing
 // evidence is a real blocker, not a reason to invent a wire contract in fixtures.
+
+// Synthetic catalog/book evidence tests local policy, not live provider support.
+const endpointHost={venice:'api.venice.ai',groq:'api.groq.com',google:'generativelanguage.googleapis.com',openai:'api.openai.com'};
+function endpointOffer(provider,host=endpointHost[provider],change={}) {
+ return {...book.offers[0],provider_id:provider,seller_base_url:`https://${host}/v1`,effective_input_per_1m:10000,effective_output_per_1m:20000,...change};
+}
+function endpointTransport(rows,books) {
+ const calls=[];
+ return {calls,fetchImpl:async(url,init)=>{
+  calls.push({url:String(url),init});
+  if(String(url).endsWith('/v1/prices'))return Response.json({updated_at:new Date().toISOString(),models:rows});
+  const model=decodeURIComponent(String(url).split('/').at(-1));
+  return Response.json({model,offers:books[model]??[]});
+ }};
+}
+const endpointRow=(model,provider,pricing={input:1,output:2,cacheRead:.1})=>({model,providers:[{provider,pricing}]});
+
+test('mixed exact model routes select OpenAI, AI Studio and Vertex without changing base consent or economics',async()=>{
+ const {fetchQuotes}=await module();
+ const models=['openai-pdf','studio-chat','vertex-video','default-venice'];
+ const p={...policy(),modelRoutes:{'openai-pdf':{provider:'openai',host:'api.openai.com'},'studio-chat':{provider:'google',host:'generativelanguage.googleapis.com'},'vertex-video':{provider:'google',host:'aiplatform.googleapis.com'}}};
+ const hosts=['api.openai.com','generativelanguage.googleapis.com','aiplatform.googleapis.com','api.venice.ai'];
+ const providers=['openai','google','google','venice'];
+ const t=endpointTransport(models.map((m,i)=>endpointRow(m,providers[i])),Object.fromEntries(models.map((m,i)=>[m,[endpointOffer(providers[i],hosts[i])]])));
+ const q=await fetchQuotes({...settings,models,pricingPolicy:p},'inf_discovery_must_not_send',t.fetchImpl);
+ assert.deepEqual(Object.keys(q.services),models);assert.deepEqual(q.unavailable,{});
+ for(const [i,model] of models.entries()) {
+  const s=q.services[model];assert.equal(s.provider,hosts[i]);assert.equal(s.upstreamModel,model);
+  assert.deepEqual(s.upstreamPricing,{inputUsdPerMillion:2.2,outputUsdPerMillion:4.4,cachedInputUsdPerMillion:2.2});
+  assert.equal(s.guaranteedBound,false);assert.equal(s.priceBasis,'reviewed-reference-envelope-estimate');
+  assert.equal(s.policyExpiresAt,p.expiresAt);assert.equal(s.policySourceRevision,p.sourceRevision);assert.equal(s.feeCushionBps,p.feeCushionBps);assert.equal(s.antseedFeeBps,400);
+  assert.ok(s.pricing.inputUsdPerMillion>=s.upstreamPricing.inputUsdPerMillion*1.05/.95/.96);
+ }
+ assert.equal(t.calls.length,models.length+1);
+ for(const {url,init} of t.calls){assert.equal(new URL(url).origin,'https://api.surplusintelligence.ai');assert.equal(init.method,'GET');assert.equal(init.redirect,'error');assert.deepEqual([...new Headers(init.headers)],[['accept','application/json']]);assert.doesNotMatch(JSON.stringify({url,init}),/inf_discovery/);}
+});
+
+test('reviewed OpenAI base and explicit OpenAI reference fallback require complete cache evidence',async()=>{
+ const {fetchQuotes}=await module();const model=settings.models[0];
+ for(const provider of ['openai','google']) {
+  const p={...policy(),provider,...(provider==='google'?{referenceFallback:true,referenceProvider:'openai'}:{})};
+  const t=endpointTransport([endpointRow(model,'openai')],{[model]:[endpointOffer(provider)]});
+  const q=await fetchQuotes({...settings,pricingPolicy:p},'fixture',t.fetchImpl);
+  assert.equal(q.services[model]?.provider,endpointHost[provider]);
+  for(const pricing of [{input:1,output:2},{input:1,output:2,cacheRead:.1,webSearch:1}]) {
+   const bad=endpointTransport([endpointRow(model,'openai',pricing)],{[model]:[endpointOffer(provider)]});
+   assert.deepEqual((await fetchQuotes({...settings,pricingPolicy:{...p,cacheAtInput:true}},'fixture',bad.fetchImpl)).services,{});
+  }
+ }
+});
+
+test('Google default remains AI Studio and explicit Vertex selection isolates healthy host prices',async()=>{
+ const {fetchQuotes}=await module();const model=settings.models[0];
+ const offers=[endpointOffer('google'),endpointOffer('google','aiplatform.googleapis.com',{effective_input_per_1m:9000000,effective_output_per_1m:11000000}),endpointOffer('openai','generativelanguage.googleapis.com',{effective_input_per_1m:99000000,effective_output_per_1m:99000000}),endpointOffer('google','aiplatform.googleapis.com',{healthy:false,effective_input_per_1m:99000000,effective_output_per_1m:99000000})];
+ const t=endpointTransport([endpointRow(model,'google')],{[model]:offers});
+ const base={...settings,pricingPolicy:{...policy(),provider:'google'}};
+ const studio=(await fetchQuotes(base,'fixture',t.fetchImpl)).services[model];
+ assert.equal(studio.provider,'generativelanguage.googleapis.com');assert.equal(studio.upstreamPricing.outputUsdPerMillion,4.4);
+ const vertex=(await fetchQuotes({...base,pricingPolicy:{...base.pricingPolicy,modelRoutes:{[model]:{provider:'google',host:'aiplatform.googleapis.com'}}}},'fixture',t.fetchImpl)).services[model];
+ assert.equal(vertex.provider,'aiplatform.googleapis.com');assert.equal(vertex.upstreamPricing.inputUsdPerMillion,9.9);assert.equal(vertex.upstreamPricing.outputUsdPerMillion,12.100000001); // Preserve existing conservative upward rounding.
+});
+
+test('selected endpoint cannot borrow wrong-host, wrong-provider, unhealthy, exhausted or empty supply',async()=>{
+ const {fetchQuotes}=await module();const model=settings.models[0];
+ const s={...settings,pricingPolicy:{...policy(),provider:'google',modelRoutes:{[model]:{provider:'google',host:'aiplatform.googleapis.com'}}}};
+ for(const offers of [[],[endpointOffer('google')],[endpointOffer('openai','aiplatform.googleapis.com')],...[{healthy:false},{available:false},{cap_remaining:0}].map(change=>[endpointOffer('google','aiplatform.googleapis.com',change)]),...['https://aiplatform.googleapis.com.evil/v1','https://user:pass@aiplatform.googleapis.com/v1','https://aiplatform.googleapis.com:444/v1','http://aiplatform.googleapis.com/v1'].map(seller_base_url=>[endpointOffer('google','aiplatform.googleapis.com',{seller_base_url})])]) {
+  const t=endpointTransport([endpointRow(model,'google')],{[model]:offers});
+  const q=await fetchQuotes(s,'fixture',t.fetchImpl);assert.deepEqual(q.services,{});assert.ok(q.unavailable[model]);
+ }
+});
+
+const malformedRoutes=[
+ ['null',null],['array',[]],['string','google'],['date',new Date()],['inherited model',Object.create({[settings.models[0]]:{provider:'google',host:'aiplatform.googleapis.com'}})],['unknown model',{'not-configured':{provider:'google',host:'aiplatform.googleapis.com'}}],['wildcard model',{'*':{provider:'google',host:'aiplatform.googleapis.com'}}],
+ ...[null,[],{}, {provider:'google'}, {host:'aiplatform.googleapis.com'}, {provider:'google',host:'aiplatform.googleapis.com',feeCushionBps:0}, {provider:'google',host:'aiplatform.googleapis.com',referenceFallback:true}, {provider:'google',host:'aiplatform.googleapis.com',expiresAt:'2099-01-01'}, {provider:'google',host:'aiplatform.googleapis.com',basis:'live-book'}].map((route,i)=>[`shape ${i}`,{[settings.models[0]]:route}]),
+ ...[['antseed','antseed.com'],['openrouter','openrouter.ai'],['anthropic','api.anthropic.com'],['google','api.openai.com'],['google','https://aiplatform.googleapis.com'],['google','aiplatform.googleapis.com:443'],['google','user@aiplatform.googleapis.com'],['google','aiplatform.googleapis.com.evil'],['google','*.googleapis.com'],['google','aiplatform.googleapis.com/'],['google','AIPLATFORM.GOOGLEAPIS.COM'],['openai','api.openai.com.'],['openai',null],['openai',42]].map(([provider,host])=>[`${provider}/${host}`,{[settings.models[0]]:{provider,host}}]),
+];
+for(const [name,modelRoutes] of malformedRoutes)for(const expired of [false,true])test(`invalid modelRoutes ${name} fails before discovery and ${expired?'expired':'valid'} consent classification`,async()=>{
+ const {fetchQuotes,PricingConsentExpiredError}=await module();let calls=0;
+ const p={...policy(),modelRoutes,...(expired?{reviewedAt:new Date(Date.now()-7200000).toISOString(),expiresAt:new Date(Date.now()-3600000).toISOString()}:{})};
+ await assert.rejects(fetchQuotes({...settings,pricingPolicy:p},'fixture',async()=>{calls++;return Response.json(catalog);}),error=>!(error instanceof PricingConsentExpiredError)&&/route|policy/i.test(error.message));
+ assert.equal(calls,0);
+});
+
+test('routes cannot broaden live-book consent beyond reviewed Groq cache-at-input',async()=>{
+ const {fetchQuotes}=await module();let calls=0;
+ for(const provider of ['openai','google','venice']) {
+  const p={...policy(),provider:'groq',cacheAtInput:true,basis:'live-book',modelRoutes:{[settings.models[0]]:{provider,host:endpointHost[provider]}}};
+  await assert.rejects(fetchQuotes({...settings,pricingPolicy:p},'fixture',async()=>{calls++;return Response.json(catalog);}),/Groq|policy/i);
+ }
+ assert.equal(calls,0);
+});
+
+test('malformed text routes are fatal even when media consent has expired',async()=>{
+ const {fetchQuotes}=await module();let calls=0;
+ const mediaConfig={version:1,reviewedAt:new Date(Date.now()-7200000).toISOString(),expiresAt:new Date(Date.now()-3600000).toISOString(),feeCushionBps:1000,services:[{model:'venice-sd35',kind:'image',provider:'venice',inputs:['text'],parameters:{n:1,size:'1024x1024'},estimatedCostUsd:.02,pricingBasis:'operator-estimate'}]};
+ await assert.rejects(fetchQuotes({...settings,pricingPolicy:{...policy(),modelRoutes:{unknown:{provider:'openai',host:'api.openai.com'}}},mediaConfig},'fixture',async()=>{calls++;return Response.json(catalog);}),error=>error.name!=='ConsentExpiredError'&&/route|policy/i.test(error.message));
+ assert.equal(calls,0);
+});
+
+test('OpenAI exact route uses a Venice reference card only under inherited explicit fallback consent',async()=>{
+ const {fetchQuotes}=await module();const model='gpt-4o';
+ const t=endpointTransport([endpointRow(model,'venice',{input:2.5,output:10,cacheRead:1.25})],{[model]:[endpointOffer('openai')]});
+ const p={...policy(),modelRoutes:{[model]:{provider:'openai',host:'api.openai.com'}}};
+ const s={...settings,models:[model]};
+ assert.deepEqual((await fetchQuotes({...s,pricingPolicy:p},'fixture',t.fetchImpl)).services,{});
+ const q=await fetchQuotes({...s,pricingPolicy:{...p,referenceFallback:true,referenceProvider:'venice'}},'fixture',t.fetchImpl);
+ assert.equal(q.services[model]?.provider,'api.openai.com');
+ assert.deepEqual(q.services[model]?.upstreamPricing,{inputUsdPerMillion:5.5,outputUsdPerMillion:22,cachedInputUsdPerMillion:5.5});
+});

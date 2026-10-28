@@ -1,6 +1,6 @@
 # Shared content services
 
-> Extension candidate: offline implementation and public-supply discovery are under validation. The published text-only release remains the verified baseline until the fresh-clone paid tests and settlement report are published. Catalog presence is not proof of delivered or paid media.
+> Controlled public-clone delivery evidence currently covers **9 of 11 cases**, with separate settlement and revenue-refill records below. PDF/video understanding changes remain a candidate until independent review and paid acceptance pass. Catalog presence is not proof of delivered or paid media.
 
 ## Scope
 
@@ -92,7 +92,7 @@ npm run content-probe -- --kind video --model longcat-distilled-image-to-video -
 npm run content-probe -- --kind decision --model jev-1.13 --execute
 ```
 
-Inputs must be regular files no larger than 1 MiB; the reviewed image-input probes accept PNG. Text-protocol probes use `--kind text`, `responses`, or `messages`, and an exact configured text model. Media understanding uses `vision`, `audio-input`, `file-input`, or `video-input`, with a supported configured text model and `--input`; audio/file/video understanding also requires an objective `TEST_EXPECT_CONTAINS` value. Discovery is not proof that any particular native protocol or input family works for a given upstream model.
+Inputs must be regular files no larger than 1 MiB; the reviewed image-input probes accept PNG. Text-protocol probes use `--kind text`, `responses`, or `messages`, and an exact configured text model. Media understanding uses `vision`, `audio-input`, `file-input`, or `video-input`, with a supported configured text model and `--input`; audio/file/video understanding also requires an objective `TEST_EXPECT_CONTAINS` value. See the [candidate endpoint-specific PDF/OpenAI and video/Vertex setup](ENDPOINT_INPUTS.md) for exact host selection and native input envelopes; these two cases still need paid acceptance. Discovery is not proof that any particular native protocol or input family works for a given upstream model.
 
 The default budget is $1 per isolated run; non-video cannot exceed $1 and video cannot exceed $5. `TEST_MAX_COST_USD` sets the explicit budget. AntSeed payment config values alone are **replenishable windows, not hard spending caps**. The runner additionally installs a mandatory guard on the pinned buyer-core 0.1.28 payment manager before startup, limiting the sum of channel authorization high-water marks across ordinary, automatic top-up and one-off video channels. It fails closed if the pinned version or guard startup is unavailable. Authorization limits do not guarantee an upstream render-cost ceiling or seller profitability.
 
