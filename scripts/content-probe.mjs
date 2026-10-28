@@ -9,7 +9,7 @@ import {join,resolve} from 'node:path';
 import {Wallet} from 'ethers';
 import {atomicJson,prepareRuntime} from '../lib/runtime.mjs';
 import {loadEnvFile,loadSettings,redactError} from '../lib/settings.mjs';
-import {parseContentArgs,probeBudget,validateProbeQuote,buildBuyerConfig,buildContentRequest,readProbeInput,readPrivateJson,executeContentRequest,stopBuyer,probeBudgetPreload} from '../lib/content-probe.mjs';
+import {parseContentArgs,probeBudget,validateProbeQuote,buildBuyerConfig,buildContentRequest,estimateContentRequestCost,readProbeInput,readPrivateJson,executeContentRequest,stopBuyer,probeBudgetPreload} from '../lib/content-probe.mjs';
 import {waitForProbeReadiness} from '../lib/probe-readiness.mjs';
 
 let child,logHandle,evidenceDir,context,writes=Promise.resolve(),fatal=false;
@@ -40,8 +40,7 @@ try {
   // Conservative byte-count bound for the tiny text request. Media tokenization
   // can differ by provider: the child ReserveAuth guard is the hard limit.
   if(!['image','edit','video'].includes(args.kind)){
-   const maxInputBytes=Buffer.byteLength(request.body);
-   const estimate=(maxInputBytes*service.pricing.inputUsdPerMillion+64*service.pricing.outputUsdPerMillion)/1e6;
+   const estimate=estimateContentRequestCost(request,service.pricing);
    if(!Number.isFinite(estimate)||estimate>budget)throw Error('Conservative token estimate exceeds local budget');
   }
   const expectedContains=process.env.TEST_EXPECT_CONTAINS;
@@ -93,7 +92,7 @@ try {
   if(fatal||child.exitCode!==null||child.signalCode!==null)throw Error('AntSeed buyer terminated during readiness');
   // Freshness/consent is rechecked after startup, immediately before dispatch.
   validateProbeQuote(settings,quotes,args.kind,args.model,budget);
-  const result=await executeContentRequest({kind:args.kind,model:args.model,input,baseUrl,peer,budget,expectedContains,assetHosts});
+  const result=await executeContentRequest({kind:args.kind,model:args.model,input,baseUrl,peer,budget,expectedContains,assetHosts,onResponseInspection:inspection=>atomicJson(join(evidenceDir,'response-inspection.json'),inspection)});
   if(fatal)throw Error('Buyer terminated during paid request');
   if(args.kind==='edit'&&input&&result.bytes?.equals(input.bytes))throw Error('Edit returned unchanged source bytes');
   let artifact;

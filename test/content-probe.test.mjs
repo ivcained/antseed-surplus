@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,chmod,rm,symlink} from 'node:fs/promises';
+import {mkdtemp,writeFile,chmod,rm,symlink,readFile,readdir,stat} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {EventEmitter} from 'node:events';
@@ -312,7 +312,7 @@ test('text wrappers and understanding preserve native nested input families',()=
  assert.equal(probe.buildContentRequest('responses','text').path,'/v1/responses');assert.equal(JSON.parse(probe.buildContentRequest('responses','text').body).max_output_tokens,64);
  assert.equal(probe.buildContentRequest('messages','text').path,'/v1/messages');
  for(const [kind,type,mime] of [['vision','image_url','image/png'],['audio-input','input_audio','audio/wav'],['file-input','file','application/pdf'],['video-input','input_audio','video/mp4']]){
- const request=JSON.parse(probe.buildContentRequest(kind,'text',{...input,mime,name:'fixture'}).body);assert.equal(request.messages[0].content[1].type,type);assert.equal(request.max_tokens,64);
+ const request=JSON.parse(probe.buildContentRequest(kind,'text',{...input,mime,name:'fixture'}).body);assert.equal(request.messages[0].content[1].type,type);assert.equal(request.max_tokens,kind==='video-input'?1024:64);
  }
 });
 test('OpenAI PDF Chat file envelope preserves every original byte without text extraction',async()=>{
@@ -337,7 +337,7 @@ test('controlled Vertex video Chat input_audio uses strict raw base64 of origina
   assert.equal(request.path,'/v1/chat/completions');assert.deepEqual(request.headers,{'content-type':'application/json'});
   const data=bytes.toString('base64');
   const body=JSON.parse(request.body);
-  assert.deepEqual(body,{model:'reviewed-exact-model',messages:[{role:'user',content:[{type:'text',text:'Describe the predominant color and motion in this short video.'},{type:'input_audio',input_audio:{format:'video/mp4',data}}]}],max_tokens:64,temperature:0});
+  assert.deepEqual(body,{model:'reviewed-exact-model',messages:[{role:'user',content:[{type:'text',text:'Describe the predominant color and motion in this short video.'},{type:'input_audio',input_audio:{format:'video/mp4',data}}]}],max_tokens:1024,temperature:0});
   const encoded=body.messages[0].content[1].input_audio.data;
   assert.doesNotMatch(encoded,/^data:/);
   assert.match(encoded,/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/);
@@ -559,6 +559,100 @@ test('parses genuine embedded fragmented H264 video without an external binary',
  const info=await probe.inspectVideoBytes(realMp4);assert.equal(info.codec,'avc1');assert.equal(info.duration,5);assert.equal(info.width,16);assert.equal(info.height,16);
  // Correctly reject genuine but undersized output for the requested 720p job.
  await assert.rejects(probe.inspectContentResponse('video',new Response(realMp4,{headers:{'content-type':'video/mp4'}})),/dimensions/);
+});
+test('request cost uses actual generated output caps, preserving byte heuristic and native omission fallback',()=>{
+ for(const kind of probe.CONTENT_KINDS.filter(kind=>!['image','edit'].includes(kind))){
+  const fixture=['video','vision','audio-input','file-input','video-input'].includes(kind)?{bytes:Buffer.from('opaque original bytes'),mime:kind==='audio-input'?'audio/wav':kind==='file-input'?'application/pdf':kind==='video-input'?'video/mp4':'image/png'}:undefined;
+  const request=probe.buildContentRequest(kind,'exact-model',fixture);
+  const cap=kind==='video-input'?1024:64;
+  assert.equal(probe.estimateContentRequestCost(request,price),(Buffer.byteLength(request.body)*price.inputUsdPerMillion+cap*price.outputUsdPerMillion)/1e6,kind);
+ }
+ const custom={body:JSON.stringify({max_output_tokens:137})};
+ assert.equal(probe.estimateContentRequestCost(custom,price),(Buffer.byteLength(custom.body)*2+137*12)/1e6);
+ for(const cap of [null,0,-1,'1024',1.5])assert.throws(()=>probe.estimateContentRequestCost({body:JSON.stringify({max_tokens:cap})},price),/output.*limit|token.*limit/i);
+});
+const videoInspectionOptions={kind:'video-input',model:'exact-model',input:{bytes:Buffer.from('original mp4 bytes'),mime:'video/mp4'},baseUrl:'http://127.0.0.1:8378',budget:1,expectedContains:'red'};
+for(const content of ['blue','red'])test(`video-input awaits private inspection before objective ${content==='red'?'pass':'failure'} without returning it`,async()=>{
+ let release,entered;const started=new Promise(resolve=>entered=resolve),gate=new Promise(resolve=>release=resolve);let calls=0,settled=false,snapshot;
+ const execution=probe.executeContentRequest({...videoInspectionOptions,fetchImpl:async()=>{calls++;return response({choices:[{message:{content,tool_calls:[{secret:'not copied'}]},finish_reason:'length'}],usage:{prompt_tokens:269,completion_tokens:0,completion_tokens_details:{reasoning_tokens:60,secret:999},unknown:123},url:'not copied'});},onResponseInspection:async inspection=>{snapshot=inspection;entered();await gate;}});
+ execution.then(()=>settled=true,()=>settled=true);
+ // A missing callback must fail, not hang the suite waiting on an event.
+ await Promise.race([started,execution.then(()=>assert.fail('inspection callback absent'),()=>assert.fail('inspection callback absent'))]);
+ assert.equal(settled,false);assert.equal(calls,1);assert.deepEqual(snapshot,{status:200,finishReason:'length',content:{type:'string',prefix:content,byteLength:Buffer.byteLength(content),charLength:content.length,sha256:createHash('sha256').update(content).digest('hex'),truncated:false},usage:{prompt_tokens:269,completion_tokens:0,completion_tokens_details:{reasoning_tokens:60}}});
+ release();
+ if(content==='blue')await assert.rejects(execution,/expected objective answer/);
+ else {const result=await execution;assert.equal(result.answerMatched,true);assert.equal(result.onResponseInspection,undefined);assert.equal(result.content,undefined);assert.doesNotMatch(JSON.stringify(result),/prefix|not copied|unknown|secret/);}
+ assert.equal(calls,1);
+});
+for(const content of ['red','blue'])test(`video-input persistence callback rejection fails closed for ${content} without retry`,async()=>{
+ let calls=0,inspections=0;const failure=Error('private inspection persistence failed');
+ await assert.rejects(probe.executeContentRequest({...videoInspectionOptions,fetchImpl:async()=>{calls++;return response({choices:[{message:{content}}]});},onResponseInspection:async()=>{inspections++;await Promise.resolve();throw failure;}}),error=>error===failure);
+ assert.equal(calls,1);assert.equal(inspections,1);
+});
+for(const [type,content] of [['missing',undefined],['null',null],['array',[{text:'red',url:'secret'}]],['object',{text:'red',url:'secret'}],['number',0],['boolean',false]])test(`video-input inspection keeps ${type} content unknown instead of inventing text or lengths`,async()=>{
+ let inspection;
+ await assert.rejects(probe.inspectContentResponse('video-input',response({choices:[{message:content===undefined?{}:{content},finish_reason:{private:'secret'}}]}),{expectedContains:'red',onResponseInspection:async value=>{inspection=value;}}),/expected objective answer/);
+ assert.deepEqual(inspection,{status:200,finishReason:null,content:{type,prefix:null,byteLength:null,charLength:null,sha256:null,truncated:null},usage:null});
+});
+for(const [label,usage,expected] of [['absent',undefined,null],['null',null,null],['array',[0],null],['string','0',null],['empty',{},{}],['zero',{input_tokens:0,output_tokens:0,total_tokens:0},{input_tokens:0,output_tokens:0,total_tokens:0}],['allowlist',{input_tokens:269,output_tokens:0,reasoning_tokens:60,output_tokens_details:{reasoning_tokens:60,unknown:42},prompt_tokens_details:{cached_tokens:0},completion_tokens_details:{reasoning_tokens:'60'},unknown:1,cost:123,url:'private',prompt_tokens:'269',total_tokens:-1},{input_tokens:269,output_tokens:0,reasoning_tokens:60,output_tokens_details:{reasoning_tokens:60},prompt_tokens_details:{cached_tokens:0}}]])test(`video-input inspection distinguishes ${label} usage and omits unreviewed fields`,async()=>{
+ let inspection;
+ await probe.inspectContentResponse('video-input',response({choices:[{message:{content:'red'},finish_reason:'stop'}],...(usage===undefined?{}:{usage})}),{expectedContains:'red',onResponseInspection:async value=>{inspection=value;}});
+ assert.equal(inspection.finishReason,'stop');assert.deepEqual(inspection.usage,expected);
+});
+for(const text of ['', 'a'.repeat(4096),'a'.repeat(4097), 'a'.repeat(4095)+'😀red', '😀'.repeat(3000)+'red'])test(`video-input inspection bounds UTF-8 prefix for ${text.length} UTF-16 characters`,async()=>{
+ let inspection;
+ const work=probe.inspectContentResponse('video-input',response({choices:[{message:{content:text}}]}),{expectedContains:'red',onResponseInspection:async value=>{inspection=value;}});
+ if(text.includes('red'))await work;else await assert.rejects(work,/expected objective answer/);
+ const content=inspection.content;assert.equal(content.byteLength,Buffer.byteLength(text));assert.equal(content.charLength,text.length);assert.equal(content.sha256,createHash('sha256').update(text).digest('hex'));
+ assert.ok(Buffer.byteLength(content.prefix)<=4096);assert.ok(text.startsWith(content.prefix));assert.equal(content.prefix.includes('\ufffd'),false);assert.equal(content.truncated,content.prefix!==text);
+ if(content.truncated){const next=[...text.slice(content.prefix.length)][0];assert.ok(Buffer.byteLength(content.prefix+next)>4096,'retain the maximal whole-codepoint prefix');}
+});
+test('private response inspection is scoped only to video-input',async()=>{
+ let calls=0;
+ for(const kind of ['text','vision','audio-input','file-input','responses','messages']){
+  const body=kind==='responses'?{output:[{type:'message',content:[{type:'output_text',text:'antseed content probe works'}]}]}:kind==='messages'?{content:[{type:'text',text:'antseed content probe works'}]}:{choices:[{message:{content:kind==='text'?'antseed content probe works':'red'}}]};
+  await probe.inspectContentResponse(kind,response(body),{expectedContains:'red',onResponseInspection:()=>{calls++;throw Error('wrong scope');}});
+ }
+ assert.equal(calls,0);
+});
+// Execute the ACTUAL CLI; stub only external startup/identity/discovery edges.
+// Synthetic wallet labels are not keys. No private state/env or paid transport.
+async function fixtureCli(t,{budget='1',content='red',failPersistence=false}={}){
+ const dir=await mkdtemp(join(tmpdir(),'content-cli-taskf-'));t.after(()=>rm(dir,{recursive:true,force:true}));
+ const model='gemini-2.5-pro',pricing={inputUsdPerMillion:0,outputUsdPerMillion:100,cachedInputUsdPerMillion:0};
+ for(const name of ['seller','buyer'])await writeFile(join(dir,name+'.json'),JSON.stringify({privateKey:name}),{mode:0o600});
+ await writeFile(join(dir,'quotes.json'),JSON.stringify({generatedAt:new Date().toISOString(),services:{[model]:{provider:'aiplatform.googleapis.com',pricing}}}));
+ await writeFile(join(dir,'original.mp4'),realMp4);
+ const config={...settings,models:[model],stateDir:dir,gatewayPort:8379};
+ const runtimeUrl=new URL('../lib/runtime.mjs',import.meta.url).href;
+ const modules={
+  '../lib/settings.mjs':`export const loadEnvFile=()=>{};export const loadSettings=async()=>(${JSON.stringify(config)});export const redactError=e=>e.message??String(e);`,
+  ethers:`export class Wallet {constructor(label){this.address='0x'+(label==='seller'?'a':'b').repeat(40);this.privateKey='synthetic-not-a-key';}}`,
+  '../lib/runtime.mjs':`import {atomicJson as real} from ${JSON.stringify(runtimeUrl)};export const atomicJson=async(path,value)=>{if(path.endsWith('response-inspection.json')&&${failPersistence})throw Error('private inspection persistence failed');return real(path,value);};export const prepareRuntime=async settings=>{process.stderr.write('FIXTURE_PREPARE_RUNTIME\\n');return {home:settings.stateDir,configPath:settings.stateDir+'/config.json',cliPath:'synthetic-cli'};};`,
+  'node:child_process':`import {EventEmitter} from 'node:events';export function spawn(){process.stderr.write('FIXTURE_BUYER_STARTED\\n');const c=new EventEmitter();c.exitCode=null;c.signalCode=null;c.stdout=new EventEmitter();c.stderr=new EventEmitter();c.stdout.destroy=()=>{};c.stderr.destroy=()=>{};c.kill=s=>{c.signalCode=s;c.emit('exit');};c.unref=()=>{};queueMicrotask(()=>c.stdout.emit('data','CONTENT_PROBE_BUDGET_GUARD_READY\\nCONTENT_PROBE_DISPATCH_GUARD_READY\\n'));return c;}`,
+  '../lib/probe-readiness.mjs':`export const waitForProbeReadiness=async()=>{};`,
+ };
+ // Only redirect the CLI's direct dependencies, not the real runtime atomic writer.
+ const source=`import {registerHooks} from 'node:module';const modules=${JSON.stringify(modules)};registerHooks({resolve(spec,context,next){if(context.parentURL===${JSON.stringify(new URL('../scripts/content-probe.mjs',import.meta.url).href)}&&Object.hasOwn(modules,spec))return {url:'data:text/javascript;base64,'+Buffer.from(modules[spec]).toString('base64'),shortCircuit:true};return next(spec,context);}});globalThis.fetch=async(url,init)=>{if(String(url).endsWith('/v1/models'))return Response.json({data:[]});process.stderr.write('FIXTURE_CONTENT_FETCH\\n');return Response.json({choices:[{message:{content:${JSON.stringify(content)}},finish_reason:'length'}],usage:{prompt_tokens:269,completion_tokens:0,completion_tokens_details:{reasoning_tokens:60}},private:'must not copy'});};process.argv=['node','scripts/content-probe.mjs','--execute','--kind','video-input','--model',${JSON.stringify(model)},'--input',${JSON.stringify(join(dir,'original.mp4'))}];await import(${JSON.stringify(new URL('../scripts/content-probe.mjs',import.meta.url).href)});`;
+ const result=spawnSync(process.execPath,['--input-type=module','-e',source],{cwd:new URL('..',import.meta.url),encoding:'utf8',timeout:10000,env:{PATH:process.env.PATH,HOME:dir,TMPDIR:tmpdir(),ANTSEED_WALLET_FILE:join(dir,'seller.json'),TEST_BUYER_WALLET_FILE:join(dir,'buyer.json'),TEST_MAX_COST_USD:budget,TEST_EXPECT_CONTAINS:'red',TEST_BUYER_PORT:'18378'}});
+ return {...result,dir};
+}
+test('actual CLI denies budget between legacy 64 and generated 1024 output terms before preparing or starting buyer',async t=>{
+ const result=await fixtureCli(t,{budget:'0.01'});
+ assert.equal(result.status,1,result.stderr);assert.match(result.stderr,/Conservative token estimate exceeds local budget/);assert.doesNotMatch(result.stderr,/FIXTURE_PREPARE_RUNTIME|FIXTURE_BUYER_STARTED|FIXTURE_CONTENT_FETCH/);
+});
+for(const content of ['red','blue'])test(`actual CLI privately persists inspection before objective ${content==='red'?'success':'failure'}`,async t=>{
+ const result=await fixtureCli(t,{content});assert.equal(result.status,content==='red'?0:1,result.stderr);
+ const kindDir=join(result.dir,'content-probe','video-input'),runs=await readdir(kindDir);assert.equal(runs.length,1);const evidenceDir=join(kindDir,runs[0],'evidence');
+ const path=join(evidenceDir,'response-inspection.json'),inspection=JSON.parse(await readFile(path,'utf8'));
+ assert.equal((await stat(evidenceDir)).mode&0o777,0o700);assert.equal((await stat(path)).mode&0o777,0o600);
+ assert.equal(inspection.status,200);assert.equal(inspection.content.prefix,content);assert.equal(inspection.usage.completion_tokens,0);assert.equal(inspection.usage.completion_tokens_details.reasoning_tokens,60);assert.equal(inspection.private,undefined);
+ assert.ok((await readdir(evidenceDir)).includes(content==='red'?'result.json':'failure.json'));assert.doesNotMatch(result.stdout,/prefix|finishReason|response-inspection/);
+ assert.equal((result.stderr.match(/FIXTURE_CONTENT_FETCH/g)??[]).length,1);
+});
+test('actual CLI inspection atomic-write failure prevents success and does not dispatch again',async t=>{
+ const result=await fixtureCli(t,{failPersistence:true});assert.equal(result.status,1,result.stderr);assert.match(result.stderr,/private inspection persistence failed/);assert.equal((result.stderr.match(/FIXTURE_CONTENT_FETCH/g)??[]).length,1);assert.equal(result.stdout,'');
+ const kindDir=join(result.dir,'content-probe','video-input'),[run]=await readdir(kindDir),files=await readdir(join(kindDir,run,'evidence'));assert.deepEqual(files,['failure.json']);
 });
 test('CLI without execute is offline and never requires a wallet or .env',()=>{
  const result=spawnSync(process.execPath,['scripts/content-probe.mjs','--kind','image','--model','image'],{cwd:new URL('..',import.meta.url),encoding:'utf8',timeout:5000,env:{PATH:process.env.PATH,HOME:process.env.HOME}});

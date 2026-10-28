@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "f9989cfb20faabbb293893ee2b2fd3c8affe4fad",
+  "priorAttemptEvidence": "vertex-video-raw-base64-attempt.json",
+  "status": "source candidate for a discriminating token-cap experiment; not live modality acceptance",
+  "sourceSha256": {
+    "lib/content-probe.mjs": "84e0951d915fe5ab8205a09b9e6b66b8aaecbfb567aafd4970a40afb2f609031",
+    "scripts/content-probe.mjs": "fe04a24d4138054c5e019e5a99cdc19db8eaeabb12f5617d6d6f0f10031e4bc6",
+    "test/content-probe.test.mjs": "152637c8e7f49384b848f8bc63d7185f8667d23f5d1061d0033df28e334ade5b",
+    "test/provider-endpoint-compat.test.mjs": "f034acfbad7396aa88a53e29e3f80387413a59c214b29d3856b87bb1389b2b7b"
+  },
+  "requestChange": {
+    "kind": "video-input",
+    "maxTokensBefore": 64,
+    "maxTokensCandidate": 1024,
+    "otherRequestFieldsUnchanged": true,
+    "otherContentFamilyProfilesUnchanged": true,
+    "newConfigurationFlags": 0
+  },
+  "costPreflight": "Shared actual-generated-request output cap plus existing encoded-byte input heuristic; cumulative ReserveAuth guard remains the hard authorization bound, not the cost estimate.",
+  "privateInspection": {
+    "file": "response-inspection.json",
+    "directoryMode": "0700",
+    "fileMode": "0600",
+    "writtenBeforeObjectiveAssertion": true,
+    "awaitedPersistenceOnPassAndFailure": true,
+    "persistenceFailurePropagates": true,
+    "textPrefixMaximumUtf8Bytes": 4096,
+    "fullTextHashAndLengths": true,
+    "charLengthUnit": "UTF-16 code units",
+    "allowlistedStatusFinishReasonTokenUsageOnly": true,
+    "missingValuesRemainUnknown": true,
+    "excludedFromCliStdout": true,
+    "automaticRetries": 0
+  },
+  "implementationReportedTdd": {
+    "redTests": 221,
+    "redPassed": 191,
+    "redExpectedBehaviorFailures": 30,
+    "targetedGreenPassed": 221,
+    "fullGreenPassed": 692
+  },
+  "parentVerification": {
+    "specReviewPassed": true,
+    "focusedTestsPassed": 221,
+    "focusedTestsFailed": 0,
+    "focusedTestsSkipped": 0,
+    "cleanSourceLockedInstallPassed": true,
+    "node": "22.22.0",
+    "nativeSqliteVerified": true,
+    "cleanFullTestsPassed": 692,
+    "cleanFullTestsFailed": 0,
+    "cleanFullTestsSkipped": 0,
+    "cleanFullTestsCancelled": 0,
+    "sourceHashesMatchCleanCandidate": true
+  },
+  "independentReview": {
+    "status": "approved",
+    "focusedTestsPassed": 221,
+    "adversarialControlsPassed": 20,
+    "scopedHashesUnchanged": true,
+    "requiredBeforePublicationAndPaidRetest": true
+  },
+  "liveRetestPerformed": false,
+  "accepted": false,
+  "liveDeliveryCasesPassed": 10,
+  "liveDeliveryCasesTotal": 11,
+  "limits": [
+    "The previous request explicitly recorded reasoning usage but its original text and finish reason were unavailable; 64-token cap exhaustion is not proven.",
+    "Synthetic and loopback tests prove request fidelity, budget preflight and private evidence behavior, not provider semantic acceptance.",
+    "Independent source approval passed offline. Publication/public-clone verification and one bounded paid objective test with metering and canonical payout remain separate gates.",
+    "Generated-video duration fidelity remains unresolved."
+  ]
+}

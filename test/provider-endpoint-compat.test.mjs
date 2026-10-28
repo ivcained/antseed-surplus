@@ -13,7 +13,7 @@ const models=['pdf-chat','studio-chat','vertex-video-chat'];
 const providerIds=['openai','google','google'];
 const hosts=['api.openai.com','generativelanguage.googleapis.com','aiplatform.googleapis.com'];
 const policy=()=>({version:1,allowEstimates:true,provider:'google',reviewedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+3600000).toISOString(),sourceRevision:'2207d607e747f487a4d83e60c7f24ad677a55a7f',feeCushionBps:1000,offerMultiplierCeiling:2,modelRoutes:Object.fromEntries(models.map((model,i)=>[model,{provider:providerIds[i],host:hosts[i]}]))});
-const settings=()=>({surplusBaseUrl:'https://api.surplusintelligence.ai/v1',models,marginBps:500,safetyBps:500,pricingPolicy:policy(),maxTokens:64,maxInputBytes:16384,maxConcurrent:1,quoteMaxAgeMs:60000});
+const settings=()=>({surplusBaseUrl:'https://api.surplusintelligence.ai/v1',models,marginBps:500,safetyBps:500,pricingPolicy:policy(),maxTokens:1024,maxInputBytes:16384,maxConcurrent:1,quoteMaxAgeMs:60000});
 const completion={choices:[{message:{role:'assistant',content:'fixture accepted'},finish_reason:'stop'}]};
 
 test('reviewed endpoint quotes pin actual loopback Chat forwarding while nested PDF/video bytes survive unchanged',async t=>{
@@ -62,7 +62,7 @@ test('reviewed endpoint quotes pin actual loopback Chat forwarding while nested 
  assert.deepEqual(paid[2],{
   model:models[2],
   messages:[{role:'user',content:[{type:'text',text:'Describe the predominant color and motion in this short video.'},{type:'input_audio',input_audio:{format:'video/mp4',data:video.toString('base64')}}]}],
-  max_tokens:64,temperature:0,
+  max_tokens:1024,temperature:0,
   provider:'aiplatform.googleapis.com',max_price_per_1m:quotes.services[models[2]].maxPricePer1m,
   providers_blocked:['antseed'],si_route:{objective:'price_without_cache',cache:false},
  },'the actual controlled video builder must forward the entire raw-base64 envelope with exact reviewed routing');

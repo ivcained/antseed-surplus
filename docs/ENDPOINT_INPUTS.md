@@ -56,6 +56,8 @@ npm run content-probe -- --kind file-input --model gpt-4o --input /absolute/path
 
 For an MP4 with an unambiguous red scene, set `TEST_EXPECT_CONTAINS=red` and the explicit budget, then:
 
+The source-reviewed video-input candidate requests `max_tokens: 1024` instead of 64; other controlled text/input profiles stay unchanged. Keep the seller's `MAX_OUTPUT_TOKENS` at least 1024 (the default is 4096). Its conservative local estimate reads the actual generated request cap while the cumulative ReserveAuth budget guard remains mandatory. This is a discriminating cap experiment, not proof that the previous cap caused the failure. The candidate also writes bounded private `response-inspection.json` diagnostics before objective validation: recognized finish reason, original text length/hash and at most a 4096-byte UTF-8 prefix, plus allowlisted token/reasoning usage. Missing values remain unknown; raw response objects and headers are not dumped. Keep this file private and do not treat successful diagnostic persistence as modality acceptance. Parent and independent source review passed; publication/public-clone verification and a fresh paid objective result remain separate gates.
+
 ```sh
 npm run content-probe -- --kind video-input --model gemini-2.5-pro --input /absolute/path/to/red.mp4 --execute
 ```
