@@ -9,12 +9,24 @@ A standalone AntSeed text-inference seller with a loopback OpenAI-compatible gat
 Use **Node 22** consistently for installation and execution. AntSeed has native SQLite dependencies; mixing Node versions can produce an ABI mismatch. Use an absolute Node 22 executable in service definitions/background jobs, not whichever `node` a supervisor happens to find.
 
 ```sh
-node --version
+# Public clone over HTTPS; no Gitlawb identity is needed to read it.
+git clone https://node.gitlawb.com/z6MkoyCVwBq8br8JaUfqTMpnMZMDgByyurJ9Wtoc8rdXj14f/antseed-surplus.git
+cd antseed-surplus
+# If you use nvm: nvm install && nvm use
+node --version # tested with the version pinned in .nvmrc
 npm ci
 npm test
 cp .env.example .env
 chmod 600 .env
 ```
+
+With Gitlawb's remote helper installed, the equivalent clone is:
+
+```sh
+git clone gitlawb://did:key:z6MkoyCVwBq8br8JaUfqTMpnMZMDgByyurJ9Wtoc8rdXj14f/antseed-surplus
+```
+
+Only source and sanitized evidence are published. Never push your populated `.env`, wallet, `.state`, payment databases or signed treasury journal.
 
 Edit `.env` privately before running commands:
 
