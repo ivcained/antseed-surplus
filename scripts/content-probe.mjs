@@ -10,12 +10,14 @@ import {Wallet} from 'ethers';
 import {atomicJson,prepareRuntime} from '../lib/runtime.mjs';
 import {loadEnvFile,loadSettings,redactError} from '../lib/settings.mjs';
 import {parseContentArgs,probeBudget,validateProbeQuote,buildBuyerConfig,buildContentRequest,readProbeInput,readPrivateJson,executeContentRequest,stopBuyer,probeBudgetPreload} from '../lib/content-probe.mjs';
+import {waitForProbeReadiness} from '../lib/probe-readiness.mjs';
 
 let child,logHandle,evidenceDir,context,writes=Promise.resolve(),fatal=false;
+const readinessAbort=new AbortController();
 const clean=value=>redactError(value).replace(/\b[0-9a-fA-F]{64}\b/g,'[REDACTED]').slice(0,4096);
 async function privateDir(path){await mkdir(path,{recursive:true,mode:0o700});const info=await lstat(path);if(!info.isDirectory()||info.isSymbolicLink()||(info.mode&0o077))throw Error('Probe directories must be private (0700), not symlinks');}
 async function availablePort(port){await new Promise((resolve,reject)=>{const server=createServer();server.once('error',()=>reject(Error('TEST_BUYER_PORT is already occupied or unavailable')));server.listen(port,'127.0.0.1',()=>server.close(resolve));});}
-async function interrupted(signal){fatal=true;process.exitCode=signal==='SIGINT'?130:143;await stopBuyer(child,{processGroup:true}).catch(()=>{});}
+async function interrupted(signal){fatal=true;readinessAbort.abort();process.exitCode=signal==='SIGINT'?130:143;await stopBuyer(child,{processGroup:true}).catch(()=>{});}
 const onInt=()=>void interrupted('SIGINT'),onTerm=()=>void interrupted('SIGTERM');
 try {
  const args=parseContentArgs(process.argv.slice(2));
@@ -61,7 +63,8 @@ try {
   await atomicJson(runtime.configPath,buildBuyerConfig(settings,service,args.model,budget,port,peer));
   logHandle=await open(join(stateDir,'buyer.log'),'wx',0o600);let logged=0,guardReady=false,dispatchGuardReady=false;
   child=spawn(process.execPath,['--import',probeBudgetPreload(budget,{kind:args.kind,model:args.model,peer}),runtime.cliPath,'--config',runtime.configPath,'--data-dir',stateDir,'buyer','start','--peer',peer,'--port',String(port),'--metadata-fetch-timeout-ms','15000','--no-verifier'],{detached:true,env:{PATH:process.env.PATH,HOME:runtime.home,TMPDIR:process.env.TMPDIR,ANTSEED_DATA_DIR:stateDir,ANTSEED_CONFIG:runtime.configPath,ANTSEED_IDENTITY_HEX:buyer.privateKey.slice(2),ANTSEED_BASE_RPC_URL:settings.rpcUrl,ANTSEED_SKIP_PLUGIN_UPDATE_CHECK:'1'},stdio:['ignore','pipe','pipe']});
-  let spawnError;child.once('error',()=>{spawnError=Error('AntSeed buyer process failed to start');fatal=true;});
+  let spawnError;child.once('error',()=>{spawnError=Error('AntSeed buyer process failed to start');fatal=true;readinessAbort.abort();});
+  child.once('exit',()=>readinessAbort.abort());
   for(const stream of [child.stdout,child.stderr]){
    let pending='';
    stream.on('data',bytes=>{
@@ -84,6 +87,10 @@ try {
    await new Promise(resolve=>setTimeout(resolve,1000));
   }
   if(!ready||!guardReady||!dispatchGuardReady||fatal)throw spawnError??Error('AntSeed buyer not ready, hard budget/exact-model dispatch guard missing or payments disabled; inspect private buyer.log');
+  // Execution-only: eager transport may establish payment/session state. The
+  // existing hard budget/dispatch preload must be ready before this preflight.
+  await waitForProbeReadiness({baseUrl,peer,kind:args.kind,model:args.model,service,signal:readinessAbort.signal});
+  if(fatal||child.exitCode!==null||child.signalCode!==null)throw Error('AntSeed buyer terminated during readiness');
   // Freshness/consent is rechecked after startup, immediately before dispatch.
   validateProbeQuote(settings,quotes,args.kind,args.model,budget);
   const result=await executeContentRequest({kind:args.kind,model:args.model,input,baseUrl,peer,budget,expectedContains,assetHosts});
