@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "728695bf11a99164f4b3c064a81f03c90a3ac80f",
+  "sourceEvidence": "video-input-token-budget-candidate.json",
+  "priorFailedAttempt": "vertex-video-raw-base64-attempt.json",
+  "status": "controlled public-clone video-understanding delivery, objective and canonical native payout passed",
+  "accepted": true,
+  "recordedStartedAt": "2026-10-28T21:47:17.331Z",
+  "recordedCompletedAt": "2026-10-28T21:48:21.601Z",
+  "clockNote": "Machine-recorded timestamps are retained verbatim.",
+  "publicClone": {
+    "anonymousHttps": true,
+    "freshDestination": true,
+    "lockedInstallPassed": true,
+    "node": "22.22.0",
+    "nativeSqliteVerified": true,
+    "sourceHashesMatchedReviewedCandidate": true,
+    "fullTests": 692,
+    "fullPassed": 692,
+    "fullFailed": 0,
+    "fullSkipped": 0,
+    "fullCancelled": 0
+  },
+  "independentSourceReview": {
+    "status": "approved",
+    "focusedPassed": 221,
+    "additionalAdversarialPassed": 20
+  },
+  "controlledRequest": {
+    "kind": "video-input",
+    "model": "gemini-2.5-pro",
+    "provider": "google",
+    "host": "aiplatform.googleapis.com",
+    "registeredAntseedProvider": "surplus",
+    "sellerPinned": true,
+    "distinctFundedBuyer": true,
+    "paidDispatches": 1,
+    "authorizationBudgetUsd": "0.10",
+    "maxTokens": 1024,
+    "requestChangeFromPreviousAttempt": "Only max_tokens increased from 64; original MP4/raw base64/MIME, prompt, temperature, model and route unchanged.",
+    "mime": "video/mp4",
+    "inputBytes": 1940,
+    "inputSha256": "d0ae48de1da6c10fb56b1739106dc181f90a3a45893f93bfd5d10425c4ff5539",
+    "originalInputFullyDecodedWithFfmpeg": true
+  },
+  "response": {
+    "status": 200,
+    "finishReason": "stop",
+    "objectiveAnswerMatched": true,
+    "observedColor": "red",
+    "observedMotion": "none",
+    "visibleTextUtf8Bytes": 237,
+    "textSha256": "5045319c2101f4a592eb0a5fe245fa2b73ec8bc7681adccdf68d95566e43fc97",
+    "privateInspectionBeforeObjective": true,
+    "privateInspectionFileMode": "0600",
+    "privateInspectionDirectoryMode": "0700",
+    "rawResponsePublished": false,
+    "privateRequestAndRuntimeIdentifiersPublished": false,
+    "reportedUsage": {
+      "prompt_tokens": 269,
+      "completion_tokens": 61,
+      "total_tokens": 330,
+      "completion_tokens_details": {
+        "reasoning_tokens": 404
+      }
+    }
+  },
+  "nativeMetering": {
+    "eventCount": 1,
+    "registeredProvider": "surplus",
+    "service": "gemini-2.5-pro",
+    "inputTokens": 269,
+    "outputTokens": 61,
+    "cachedInputTokens": 0
+  },
+  "nativeSettlement": {
+    "localStatus": "settled",
+    "canonicalStatus": 2,
+    "grossMicroUsdc": 2397,
+    "protocolFeeMicroUsdc": 95,
+    "sellerNetMicroUsdc": 2302,
+    "transactionHash": "0x8e951f30364d0a8cf5c63d0c320ac72270cf861e9c4e75073456491186ba4851",
+    "blockNumber": 53217376,
+    "confirmationsAtVerification": 12,
+    "receiptStatus": 1,
+    "canonicalDepositsToSellerUsdcPayoutMatches": true,
+    "channelClosedEventVerified": true,
+    "unspentReserveReleasedMicroUsdc": 97603,
+    "releaseDestination": "buyer Deposits available balance, not wallet"
+  },
+  "upstreamSurplusCredit": {
+    "stronglyConsistentExactRequestRead": true,
+    "buyerChargeMicroUsdc": 473,
+    "sellerAccrualMicroUsdc": 473,
+    "fundingSource": "credits",
+    "sellerSettlementStatus": "accrued",
+    "reservationStatus": "captured",
+    "originalHoldMicroUsdc": 6414,
+    "capturedMicroUsdc": 473,
+    "unusedHoldRemainderMicroUsdc": 5941,
+    "openHoldForThisReservation": false,
+    "inputTokens": 269,
+    "outputTokens": 61,
+    "reasoningTokens": 404
+  },
+  "temporaryProcessesStopped": true,
+  "requiredTestPortsAvailableAfterRun": true,
+  "controlledDeliveryCasesPassed": 11,
+  "controlledDeliveryCasesTotal": 11,
+  "goalComplete": false,
+  "remainingGoalGap": "Generated-video fixed-duration fidelity: the earlier 8.08-second render does not satisfy the requested 5 seconds or inclusive 4.5\u20135.5-second probe bound.",
+  "limits": [
+    "Controlled self-buyer paid traffic is not organic external demand or independent third-party usage.",
+    "One-variable cap change passed, but unavailable original answer/finish-reason evidence prevents proving historical cap exhaustion.",
+    "Reported total_tokens330 is retained as supplied; reasoning404 is explicit and separate, not inferred from a subtraction.",
+    "Upstream seller accrued state is not independently verified upstream on-chain payout; native downstream payout was independently verified.",
+    "Revenue and credit charge are separate from gas/hosting costs; no net-profit claim.",
+    "No new render, trimming, rescaling or relabeling resolved generated-video profile fidelity.",
+    "Earlier revenue-only refills remain separately evidenced, not rerun by this acceptance test."
+  ],
+  "controlledDeliveryCases": [
+    {
+      "kind": "audio-input",
+      "evidence": "audio-understanding.json"
+    },
+    {
+      "kind": "decision",
+      "evidence": "native-decisions-and-edits.json"
+    },
+    {
+      "kind": "edit",
+      "evidence": "native-decisions-and-edits.json"
+    },
+    {
+      "kind": "file-input",
+      "evidence": "pdf-input-and-vertex-attempt.json"
+    },
+    {
+      "kind": "image",
+      "evidence": "media-progress.json"
+    },
+    {
+      "kind": "messages",
+      "evidence": "media-progress.json"
+    },
+    {
+      "kind": "responses",
+      "evidence": "media-progress.json"
+    },
+    {
+      "kind": "text",
+      "evidence": "media-progress.json"
+    },
+    {
+      "kind": "video",
+      "evidence": "media-progress.json"
+    },
+    {
+      "kind": "video-input",
+      "evidence": "video-input-token-budget-acceptance.json"
+    },
+    {
+      "kind": "vision",
+      "evidence": "media-progress.json"
+    }
+  ],
+  "coverageNote": "Delivery cases are deduplicated across retained successful attempts. The video entry is transport/artifact delivery only and does not pass the separate fixed-duration profile."
+}

@@ -2,7 +2,8 @@
   "schemaVersion": 1,
   "baseCommit": "f9989cfb20faabbb293893ee2b2fd3c8affe4fad",
   "priorAttemptEvidence": "vertex-video-raw-base64-attempt.json",
-  "status": "source candidate for a discriminating token-cap experiment; not live modality acceptance",
+  "status": "historical source approval snapshot; subsequent live acceptance is tracked separately",
+  "subsequentPaidAcceptanceEvidence": "video-input-token-budget-acceptance.json",
   "sourceSha256": {
     "lib/content-probe.mjs": "84e0951d915fe5ab8205a09b9e6b66b8aaecbfb567aafd4970a40afb2f609031",
     "scripts/content-probe.mjs": "fe04a24d4138054c5e019e5a99cdc19db8eaeabb12f5617d6d6f0f10031e4bc6",
