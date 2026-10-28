@@ -1,0 +1,14 @@
+{
+  "name": "@local/antseed-provider-surplus",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./index.mjs",
+  "engines": { "node": ">=22" },
+  "peerDependencies": {
+    "@antseed/provider-core": "0.2.61",
+    "@antseed/node": "0.2.154",
+    "@antseed/api-adapter": "0.1.53",
+    "@antseed/buyer-core": "0.1.28"
+  }
+}

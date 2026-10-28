@@ -16,6 +16,7 @@
     "register": "node scripts/register.mjs",
     "monitor": "node scripts/monitor.mjs",
     "probe": "node scripts/probe.mjs",
+    "content-probe": "node scripts/content-probe.mjs",
     "seller": "node scripts/seller.mjs",
     "prices": "node scripts/prices.mjs",
     "topup": "node scripts/topup.mjs",
@@ -25,6 +26,7 @@
     "@antseed/cli": "0.1.208",
     "@antseed/provider-openai": "0.2.53",
     "@antseed/router-local": "0.1.50",
+    "@local/antseed-provider-surplus": "file:plugins/surplus",
     "ethers": "6.15.0"
   }
 }

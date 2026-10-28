@@ -4,6 +4,10 @@ A standalone AntSeed text-inference seller with a loopback OpenAI-compatible gat
 
 **Pricing is an explicitly accepted estimate, not a guaranteed-profit strategy.** SI's public orderbook omits full per-offer cache rates and account fees. Provider pinning is not exact-offer pinning, and `max_price_per_1m` may be ignored with minimum-discount routing. Without a reviewed pricing policy the application fails closed rather than inventing a safe price.
 
+## Shared content extension
+
+Image generation/editing, native video jobs and structured decisions are opt-in extensions with separate unit/token pricing. See [shared content configuration and acceptance gates](docs/MEDIA.md), and `examples/media.config.json`. **The extension is under validation; do not treat live supply discovery or offline tests as paid-delivery proof.** The default text-only setup below is unchanged.
+
 ## Install and configure
 
 Use **Node 22** consistently for installation and execution. AntSeed has native SQLite dependencies; mixing Node versions can produce an ABI mismatch. Use an absolute Node 22 executable in service definitions/background jobs, not whichever `node` a supervisor happens to find.
@@ -211,7 +215,9 @@ The actual transfer is capped by fresh unspent revenue, wallet funds after reser
 
 ## Policy expiry and recovery
 
-The pricing policy expires after 24 hours. The gateway rejects expired/stale quotes and the seller stops on policy-refresh failure. The monitor does not renew policy or restart the seller. After independently reviewing the upstream contract/rates again, stop the seller if it is still running, move **only the pricing policy** aside, then explicitly renew and review prices:
+The pricing policy expires after 24 hours. The gateway rejects expired/stale quotes. A text-only seller stops on policy-refresh failure. With video enabled and valid preserved retrieval metadata, consent expiry instead leaves the child and authenticated gateway in **retrieval-only mode**: all new billable work is refused, while existing paid videos remain retrievable. An expired restart can restore only video retrieval from the private `retrieval-runtime.json`, bound to the original seller, policies, economics and positive unit tariff. It does not renew consent or authorize new renders. Missing, changed or unsafe recovery metadata fails closed; unrelated pricing or persistence failures remain fatal. Preserve this file alongside the video journal, payment databases and treasury checkpoint.
+
+The monitor does not renew policy or restart the seller. Finish retrieving pending paid videos before intentionally stopping or changing the recovery-bound policies. After independently reviewing the upstream contract/rates again, stop the seller if it is still running, move **only the pricing policy** aside, then explicitly renew and review prices:
 
 ```sh
 mv .state/pricing-policy.json .state/pricing-policy.previous.json

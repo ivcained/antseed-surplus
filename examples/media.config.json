@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "reviewedAt": "REVIEW_REQUIRED_REPLACE_WITH_CURRENT_ISO_TIMESTAMP",
+  "expiresAt": "REVIEW_REQUIRED_REPLACE_WITH_ISO_TIMESTAMP_WITHIN_24_HOURS",
+  "feeCushionBps": 1000,
+  "services": [
+    {
+      "model": "venice-sd35",
+      "kind": "image",
+      "provider": "venice",
+      "inputs": ["text"],
+      "parameters": {"n": 1, "size": "1024x1024"},
+      "estimatedCostUsd": 0.02,
+      "pricingBasis": "operator-estimate"
+    },
+    {
+      "model": "muse-image-edit",
+      "kind": "image",
+      "provider": "venice",
+      "inputs": ["text", "image"],
+      "parameters": {"n": 1},
+      "estimatedCostUsd": 0.03,
+      "pricingBasis": "operator-estimate"
+    },
+    {
+      "model": "longcat-distilled-image-to-video",
+      "kind": "video",
+      "provider": "venice",
+      "inputs": ["text", "image"],
+      "parameters": {"duration_seconds": 5, "resolution": "720p"},
+      "estimatedCostUsd": 0.2,
+      "pricingBasis": "operator-estimate"
+    },
+    {
+      "model": "jev-1.13",
+      "kind": "decision",
+      "provider": "typesafe",
+      "inputs": ["text"],
+      "parameters": {},
+      "pricingBasis": "operator-estimate"
+    }
+  ]
+}

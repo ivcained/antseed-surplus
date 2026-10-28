@@ -105,6 +105,30 @@ test('Groq source-reviewed cache-at-input policy handles omitted native cache ra
  const noConsent=await fetchQuotes({...settings,pricingPolicy:{...p,cacheAtInput:undefined}},'fixture',f);assert.deepEqual(noConsent.services,{});
 });
 
+test('reviewed native Google reference policy enables multimodal text models without enabling aggregator hosts',async()=>{
+ const {fetchQuotes}=await module();
+ const p={...policy(),provider:'google'};
+ const googleCatalog={...catalog,models:[{model:'gpt-oss-120b',providers:[{provider:'google',pricing:{input:.15,output:.6,cacheRead:.015}}]}]};
+ const direct={...book,offers:[{...book.offers[0],provider_id:'google',seller_base_url:'https://generativelanguage.googleapis.com/v1beta'}]};
+ const f=async url=>Response.json(String(url).endsWith('/v1/prices')?googleCatalog:direct);
+ const q=await fetchQuotes({...settings,pricingPolicy:p},'fixture',f);
+ assert.equal(q.services['gpt-oss-120b'].provider,'generativelanguage.googleapis.com');
+ assert.equal(q.services['gpt-oss-120b'].guaranteedBound,false);
+ const wrong=async url=>Response.json(String(url).endsWith('/v1/prices')?googleCatalog:{...direct,offers:[{...direct.offers[0],seller_base_url:'https://aggregator.example/v1'}]});
+ assert.deepEqual((await fetchQuotes({...settings,pricingPolicy:p},'fixture',wrong)).services,{});
+ await assert.rejects(fetchQuotes({...settings,pricingPolicy:{...p,basis:'live-book'}},'fixture',f),/Groq|policy/i);
+});
+test('reference fallback can explicitly select a reviewed reference provider instead of unrelated add-on tariffs',async()=>{
+ const {fetchQuotes}=await module();
+ const p={...policy(),provider:'google',referenceFallback:true,referenceProvider:'venice'};
+ const rows={...catalog,models:[{model:'gpt-oss-120b',providers:[...catalog.models[0].providers,{provider:'openrouter',pricing:{input:1,output:2,cacheRead:.1,webSearch:.01}}]}]};
+ const f=async url=>Response.json(String(url).endsWith('/v1/prices')?rows:{...book,offers:[{...book.offers[0],provider_id:'google',seller_base_url:'https://generativelanguage.googleapis.com/v1beta/openai'}]});
+ const result=await fetchQuotes({...settings,pricingPolicy:p},'fixture',f);
+ assert.ok(result.services['gpt-oss-120b']);
+ assert.equal(result.services['gpt-oss-120b'].upstreamPricing.inputUsdPerMillion,.154);
+ for(const referenceProvider of ['antseed','missing'])await assert.rejects(fetchQuotes({...settings,pricingPolicy:{...p,referenceProvider}},'fixture',f),/reference|policy/i);
+ await assert.rejects(fetchQuotes({...settings,pricingPolicy:{...p,referenceFallback:false}},'fixture',f),/reference|policy/i);
+});
 test('explicit reference fallback uses maximum component across catalog providers if pinned provider card is absent',async()=>{
  const {fetchQuotes}=await module();const p={...policy(),provider:'groq',cacheAtInput:true,referenceFallback:true};
  const f=async(url)=>new Response(JSON.stringify(String(url).endsWith('/v1/prices') ? catalog : {...book,offers:[{...book.offers[0],provider_id:'groq',seller_base_url:'https://api.groq.com/openai/v1'}]}),{status:200});
