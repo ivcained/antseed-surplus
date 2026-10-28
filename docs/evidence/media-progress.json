@@ -1,0 +1,217 @@
+{
+  "sourceCommit": "222837e23031b24efabe9afc4b4b41694b7dad5d",
+  "controlledTraffic": true,
+  "goalComplete": false,
+  "requiredCases": 11,
+  "successfulCases": 6,
+  "cases": [
+    {
+      "kind": "image",
+      "model": "venice-sd35",
+      "startedAt": "2026-10-28T16:42:18.275Z",
+      "completedAt": "2026-10-28T16:43:50.818Z",
+      "success": true,
+      "status": 200,
+      "media": {
+        "mime": "image/png",
+        "width": 1024,
+        "height": 1024,
+        "bytes": 1230416,
+        "sha256": "86c424466b00412473f6541ad7484432ddcd4fe3236a83ca6340ee392e3ad533"
+      }
+    },
+    {
+      "kind": "edit",
+      "model": "muse-image-edit",
+      "startedAt": "2026-10-28T16:53:15.694Z",
+      "completedAt": "2026-10-28T16:55:18.731Z",
+      "success": false,
+      "status": 502,
+      "error": "Paid content failed HTTP 502: upstream_request_failed"
+    },
+    {
+      "kind": "video",
+      "model": "longcat-distilled-image-to-video",
+      "startedAt": "2026-10-28T16:44:44.675Z",
+      "completedAt": "2026-10-28T16:50:27.335Z",
+      "success": true,
+      "status": 200,
+      "media": {
+        "mime": "video/mp4",
+        "codec": "avc1",
+        "width": 960,
+        "height": 960,
+        "duration": 8.08,
+        "validation": "mp4-container-metadata",
+        "bytes": 1534746,
+        "sha256": "a811024cece251e6eb93bcb9c5ec84beb0cc5eb4e03a5a1667fe836d7c646550"
+      }
+    },
+    {
+      "kind": "decision",
+      "model": "jev-1.13",
+      "startedAt": "2026-10-28T16:56:01.929Z",
+      "completedAt": "2026-10-28T16:56:28.118Z",
+      "success": false,
+      "status": 502,
+      "error": "Paid content failed HTTP 502: upstream_request_failed"
+    },
+    {
+      "kind": "text",
+      "model": "gemini-2.5-flash",
+      "startedAt": "2026-10-28T16:56:29.084Z",
+      "completedAt": "2026-10-28T16:56:53.827Z",
+      "success": true,
+      "status": 200,
+      "answerMatched": true
+    },
+    {
+      "kind": "vision",
+      "model": "gemini-2.5-flash",
+      "startedAt": "2026-10-28T16:56:54.973Z",
+      "completedAt": "2026-10-28T16:57:14.853Z",
+      "success": true,
+      "status": 200,
+      "answerMatched": true
+    },
+    {
+      "kind": "responses",
+      "model": "gemini-2.5-flash",
+      "startedAt": "2026-10-28T16:58:41.961Z",
+      "completedAt": "2026-10-28T16:59:02.166Z",
+      "success": true,
+      "status": 200,
+      "answerMatched": true
+    },
+    {
+      "kind": "messages",
+      "model": "gemini-2.5-flash",
+      "startedAt": "2026-10-28T16:57:15.838Z",
+      "completedAt": "2026-10-28T16:58:40.810Z",
+      "success": true,
+      "status": 200,
+      "answerMatched": true
+    },
+    {
+      "kind": "audio-input",
+      "model": "gemini-2.5-flash",
+      "startedAt": "2026-10-28T16:59:03.274Z",
+      "completedAt": "2026-10-28T16:59:22.867Z",
+      "success": false,
+      "status": null,
+      "error": "Content did not contain expected objective answer"
+    },
+    {
+      "kind": "file-input",
+      "model": "gemini-2.5-flash",
+      "startedAt": "2026-10-28T16:59:23.935Z",
+      "completedAt": "2026-10-28T16:59:41.407Z",
+      "success": false,
+      "status": 502,
+      "error": "Paid content failed HTTP 502: upstream_request_failed"
+    },
+    {
+      "kind": "video-input",
+      "model": "gemini-2.5-flash",
+      "startedAt": "2026-10-28T16:59:42.358Z",
+      "completedAt": "2026-10-28T17:00:06.526Z",
+      "success": false,
+      "status": 502,
+      "error": "Paid content failed HTTP 502: upstream_request_failed"
+    }
+  ],
+  "settlements": {
+    "head": 53208818,
+    "seller": "0x0e49122e76bD8B9ccb2FE10c0088C41Ceb608927",
+    "checkpointBlock": 53206905,
+    "controlledTraffic": true,
+    "events": [
+      {
+        "channelId": "0x62fc4030c536b1b533787bfc674bfbf495a45902eb27d5e0fc4af629b60963f1",
+        "transactionHash": "0xd51f00bed3b39595d6880de7490762eb9db39c7cae10743bfd63acb352378c14",
+        "blockNumber": 53208248,
+        "confirmations": 571,
+        "grossMicro": "25329",
+        "platformFeeMicro": "1013",
+        "netMicro": "24316",
+        "canonical": true,
+        "payoutMatched": true
+      },
+      {
+        "channelId": "0x47af247938eb5557d680d24893df712098271892657d780878692e5057ef6acf",
+        "transactionHash": "0xce6e169143bc6ad7adcaf60670b281fa619b555226b218e0dbd975c85c53e692",
+        "blockNumber": 53208442,
+        "confirmations": 377,
+        "grossMicro": "253289",
+        "platformFeeMicro": "10131",
+        "netMicro": "243158",
+        "canonical": true,
+        "payoutMatched": true
+      },
+      {
+        "channelId": "0xbd52eda22bc95a9e9dd8b5a0a6b562be4b028a7afff2c9776980333338f92e49",
+        "transactionHash": "0xab23ac4de33bfbc2f12c37317b8f8418a84935076d18944b5ce77f905bf0c13f",
+        "blockNumber": 53208635,
+        "confirmations": 184,
+        "grossMicro": "39",
+        "platformFeeMicro": "1",
+        "netMicro": "38",
+        "canonical": true,
+        "payoutMatched": true
+      },
+      {
+        "channelId": "0xb84512aeeaa79eaf0107eb384bf2406849d37d2dfeec765644297516eaa7dec5",
+        "transactionHash": "0xc3ae7dac732e3be6754240260709f79a7a670dde21c350631c7f8750350c7363",
+        "blockNumber": 53208646,
+        "confirmations": 173,
+        "grossMicro": "215",
+        "platformFeeMicro": "8",
+        "netMicro": "207",
+        "canonical": true,
+        "payoutMatched": true
+      },
+      {
+        "channelId": "0xf1ae4b35814199bf7b0b07aabb8f84b50c56a6c7e130257e4c66d3c75e453adc",
+        "transactionHash": "0x96e1d60d5db11d0ec423908e3597394bfd88901bbe2e288fdfe943885d94066d",
+        "blockNumber": 53208689,
+        "confirmations": 130,
+        "grossMicro": "39",
+        "platformFeeMicro": "1",
+        "netMicro": "38",
+        "canonical": true,
+        "payoutMatched": true
+      },
+      {
+        "channelId": "0xfe4b5c8f4fc8ab56c6d6d5caee86c1bcb9a1597dfa0c5be67ba0e0414ad0119f",
+        "transactionHash": "0x8bc0a107c45a239a51b4c4ce22228a3d892dbd7f015f4c5f6d3ab81997b4c22c",
+        "blockNumber": 53208700,
+        "confirmations": 119,
+        "grossMicro": "39",
+        "platformFeeMicro": "1",
+        "netMicro": "38",
+        "canonical": true,
+        "payoutMatched": true
+      },
+      {
+        "channelId": "0xba879c4cb1c79e1f88b7e4c7c4a5a0fd428a9897b70ab513edbac235031298df",
+        "transactionHash": "0x4a354a57dde3b6fefc33283e0b0097740cd3c4419b1549317c71bd13b3fc70eb",
+        "blockNumber": 53208709,
+        "confirmations": 110,
+        "grossMicro": "84",
+        "platformFeeMicro": "3",
+        "netMicro": "81",
+        "canonical": true,
+        "payoutMatched": true
+      }
+    ],
+    "confirmedNetMicro": "267876"
+  },
+  "warnings": [
+    "Controlled buyer traffic is not organic demand or profitability proof.",
+    "Native video requested 5s/720p but delivered 8.08s at 960x960; exact-profile fidelity remains unresolved.",
+    "Video passed full ffmpeg frame decoding; sampled frames show a predominantly red image with changing dark regions, not a clearly demonstrated right-moving square.",
+    "Audio returned HTTP 200 but failed the objective answer check and still incurred an AntSeed charge.",
+    "Exact upstream per-request charges and gas reconciliation remain pending.",
+    "Image editing, decisions, audio input, PDF input and video input are not accepted as working."
+  ]
+}

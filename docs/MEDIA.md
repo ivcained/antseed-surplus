@@ -84,7 +84,7 @@ Only the following explicit command sends a paid request:
 npm run content-probe -- --kind image --model venice-sd35 --execute
 ```
 
-Use one run per kind. Other fixed-profile examples are:
+Use one run per kind, **serially when reusing the same buyer wallet**. Different ports and state directories do not create different AntSeed peer identities; concurrent buyer processes with the same identity can replace each other's connection and interrupt payment authorization. Let the video probe finish before starting another kind with that wallet. Other fixed-profile examples are:
 
 ```sh
 npm run content-probe -- --kind edit --model muse-image-edit --input /absolute/path/to/input.png --execute
