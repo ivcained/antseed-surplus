@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import {prepareRuntime} from '../lib/runtime.mjs';
+const run=promisify(execFile);
+
+test('isolated AntSeed CLI discovers the bundled surplus provider without npm installation',async t=>{
+ const stateDir=await mkdtemp(join(tmpdir(),'surplus-cli-discovery-'));
+ t.after(()=>rm(stateDir,{recursive:true,force:true}));
+ const zero={inputUsdPerMillion:0,outputUsdPerMillion:0,cachedInputUsdPerMillion:0};
+ const quotes={services:{'venice-sd35':{kind:'image',upstreamModel:'venice-sd35',provider:'api.venice.ai',pricing:zero,unitPriceUsd:.03,media:{inputs:['text']}}}};
+ const runtime=await prepareRuntime({stateDir,gatewayPort:18791,maxConcurrent:2,rpcUrl:'https://example.com',dhtPort:6881,signalingPort:6882},quotes);
+ const loader=new URL('../node_modules/@antseed/cli/dist/plugins/loader.js',import.meta.url).href;
+ const implementation=new URL('../plugins/surplus/index.mjs',import.meta.url).href;
+ const source=`import assert from 'node:assert/strict';
+ const {loadProviderPlugin}=await import(${JSON.stringify(loader)});
+ const plugin=await loadProviderPlugin('@local/antseed-provider-surplus');
+ const direct=await import(${JSON.stringify(implementation)});
+ assert.equal(plugin,direct.default);
+ assert.equal(plugin.type,'provider');
+ assert.equal(plugin.name,'surplus');
+ assert.equal(typeof plugin.createProvider,'function');
+ console.log('BUNDLED_SURPLUS_PLUGIN_DISCOVERED');`;
+ const {stdout}=await run(process.execPath,['--input-type=module','-e',source],{timeout:30000,env:{PATH:process.env.PATH,HOME:runtime.home,TMPDIR:tmpdir(),ANTSEED_SKIP_PLUGIN_UPDATE_CHECK:'1'}});
+ assert.match(stdout,/BUNDLED_SURPLUS_PLUGIN_DISCOVERED/);
+});
