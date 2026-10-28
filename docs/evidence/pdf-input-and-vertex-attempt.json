@@ -59,7 +59,18 @@
     "gatewayStatus": 502,
     "upstreamStatus": 400,
     "accepted": false,
-    "cause": "Exact upstream rejection under read-only investigation; do not infer provider fault or invent an error body",
+    "cause": "Vertex INVALID_ARGUMENT: Invalid base64-encoded blob data found in an 'input_audio' 'data' field. The failed probe supplied a MIME data URI; a narrowly scoped raw-Base64 correction is a candidate, not yet live acceptance.",
+    "upstreamAccounting": {
+      "observationAt": "2026-10-28T20:15:58.221813+00:00",
+      "correlatedRequestCount": 1,
+      "buyerCostMicro": "0",
+      "sellerCostMicro": "0",
+      "temporaryHoldMicro": "414",
+      "reservationStatus": "released",
+      "holdDurationMs": 259,
+      "usageItemAbsent": true,
+      "capturedAmountFieldAbsent": true
+    },
     "nativePaymentState": {
       "checkedAt": "2026-10-28T20:11:47.394Z",
       "chainChannelStatus": 1,
@@ -73,6 +84,16 @@
         "revertSelector": "0xea8e4eb5",
         "broadcastOccurred": false,
         "refundClaimed": false
+      },
+      "laterResolution": {
+        "checkedAt": "2026-10-28T20:46:16.205Z",
+        "chainChannelStatus": 2,
+        "chainSettledMicro": "0",
+        "releasedReserveMicro": "100000",
+        "destination": "Buyer Deposits available balance, not wallet transfer",
+        "operatorUnchanged": true,
+        "canonicalReserveReleaseVerified": true,
+        "evidence": "failed-video-reserve-release.json"
       }
     }
   },
@@ -96,7 +117,7 @@
   "limits": [
     "The expected substring is a controlled-fixture semantic check, not general PDF capability certification.",
     "Reported upstream cost is response evidence, not independent account-ledger reconciliation or an upstream on-chain settlement.",
-    "The failed video-input attempt has no native seller settlement, but its buyer channel still held a 100000-micro deposit at the observation; no refund is claimed.",
+    "The initial observation had an unreleased 100000-micro native buyer reserve and a failed request-close command. A later native seller zero-close released that reserve to buyer Deposits availability; the original failure is preserved and no seller revenue or wallet transfer is claimed.",
     "Video understanding and generated-video duration fidelity remain open.",
     "Controlled self-buyer volume and gross/net payouts are not organic demand or actual profit after gas and hosting."
   ]

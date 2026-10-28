@@ -39,6 +39,12 @@ A separate read-only investigation replayed the deployed Surplus submit bundle a
 
 Own `lib/content-probe.mjs` and `test/content-probe.test.mjs`. Add the missing 5.5s maximum for the probe's fixed 5s request, preserving the existing 4.5s minimum (explicit ±10% acceptance tolerance). Keep metadata inspection distinct from full-frame decode and preserve profile mismatch as failure even for useful paid output. Regress both exact boundaries, just-outside values, 8.08s, nonfinite durations, and a real no-network `executeContentRequest` queue/poll/MP4 path with one queue only. Do not change request duration, trim/transcode outputs, loosen budgets/provider pins, modify gateway retrieval/billing, or make network/paid calls. Parent spec review and independent review precede publication.
 
+## Task E: Live-observed Vertex blob encoding compatibility (strict TDD)
+
+The first actual Vertex video-input attempt reached provider parsing and returned HTTP 400 / INVALID_ARGUMENT: `Invalid base64-encoded blob data found in an 'input_audio' 'data' field.` Strong request/reservation evidence records zero charge and an explicitly released transient credit hold. This is separate from the native AntSeed buyer channel reserve. Current Vertex documentation permits data URIs generally, so do not claim that representation is universally invalid or that the historical full egress bytes were captured.
+
+Own `lib/content-probe.mjs`, `test/content-probe.test.mjs`, and `test/provider-endpoint-compat.test.mjs`. For the endpoint-bound controlled video-input probe, emit original MP4 bytes as raw base64 in `input_audio.data`, preserving `format: "video/mp4"`, Chat structure, exact Vertex host gate, objectives, budget/identity guards, and all other content kinds. Observe RED before the minimal change. Actual-builder integration must assert the entire raw-base64 envelope and recovered original bytes through the real gateway; do not strip prefixes or transform payloads globally in production forwarding. Parent spec and independent review, publication, public-clone readback, and one bounded paid video-input attempt are required before acceptance. No repeat PDF request is needed.
+
 ## Integration and live gates
 
 1. Parent spec review, then independent security/quality review of each task and the combined routing/input seams.
