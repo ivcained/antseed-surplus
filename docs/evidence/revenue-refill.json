@@ -1,0 +1,26 @@
+{
+  "sourceCommit": "6616aa828cd4559c3e70306892f7ea015d0d4a61",
+  "controlledTest": true,
+  "chainId": 8453,
+  "token": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  "seller": "0x0e49122e76bD8B9ccb2FE10c0088C41Ceb608927",
+  "receiver": "0xe7e539CBaaf854A3C753610b1A9DbF8Aa03C6C12",
+  "amountMicro": "100",
+  "amountUsdc": "0.000100",
+  "freshConfirmedNetRevenueBeforeMicro": "268182",
+  "uncommittedRevenueAfterMicro": "268082",
+  "transactionHash": "0x6f41a786c23470963b7970e78ad628eaad8e607096e239c3d104c100781b6664",
+  "blockNumber": 53210228,
+  "confirmations": 42,
+  "status": "credit-observed",
+  "journalEntryCount": 1,
+  "nonce": 2801,
+  "exactHashRecovery": true,
+  "creditEvidence": "Authenticated API aggregate spendable balance met the stored pre-transfer balance plus 100 micros; not a transaction-specific API ledger attribution.",
+  "warnings": [
+    "Temporary forced-threshold override was used for this dust-size test because the existing Surplus account was already funded. Normal refill thresholds were not changed.",
+    "The first RPC failed after broadcast. Recovery omitted --execute and reconciled only the existing durable transaction hash.",
+    "Revenue is controlled test settlement income, not organic demand or net profit. Gas and upstream charges are not fully reconciled."
+  ],
+  "recoveryAllowedNewSigning": false
+}
