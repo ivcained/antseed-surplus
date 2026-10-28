@@ -1,0 +1,72 @@
+{
+  "controlledTraffic": true,
+  "kind": "native-video-inflight-interruption-and-later-retrieval",
+  "sourceCommit": "fba901c661ebba427bb7577bf23b3c975e553a85",
+  "verifiedAt": "2026-10-28T19:41:01.342Z",
+  "model": "longcat-distilled-image-to-video",
+  "interruption": {
+    "originalPendingStatus": "processing",
+    "interruptedAt": "2026-10-28T19:18:24.399Z",
+    "firstRecoveryAttemptFailedClosed": true,
+    "jobIdentityUnchanged": true
+  },
+  "firstRecoveryFailure": {
+    "reason": "Unrelated muse-image-edit supply disappeared during price refresh; seller stopped fail-closed.",
+    "laterRecovery": "Same accepted job and original durable buyer resource route; no resubmission."
+  },
+  "submissionAndAuthorization": {
+    "originalQueueDispatches": 1,
+    "initialReserveSignatures": 1,
+    "newQueueRequests": 0,
+    "newReserveSignatures": 0,
+    "acceptedJobCountBefore": 2,
+    "acceptedJobCountAfter": 2
+  },
+  "delivery": {
+    "status": 200,
+    "media": {
+      "mime": "video/mp4",
+      "codec": "avc1",
+      "width": 960,
+      "height": 960,
+      "duration": 8.08,
+      "validation": "mp4-container-metadata",
+      "bytes": 1423928,
+      "sha256": "5ab90d9478de9d9b283c14e33d3cbdb58c87e4fb0651bb26262e4e53c4e01e5f"
+    },
+    "independentDecode": {
+      "tool": "ffmpeg",
+      "exit": 0,
+      "decodedFrames": 202,
+      "sha256Matches": true
+    },
+    "requestedDurationSeconds": 5,
+    "durationFidelityPassed": false
+  },
+  "settlement": {
+    "checkedAt": "2026-10-28T19:41:01.342Z",
+    "chainChannelStatus": 2,
+    "settledMicro": "253289",
+    "transactionHash": "0x66645c473320694d30a5c46bfb9eeee293bc8ea9bdd8df624265a93768f26e9a",
+    "blockNumber": 53213535,
+    "confirmations": 22,
+    "receiptStatus": 1,
+    "deltaMicro": "253289",
+    "feeMicro": "10131",
+    "netMicro": "243158",
+    "canonicalPayoutMatches": true,
+    "gasUsed": "345329",
+    "effectiveGasPrice": "6000000",
+    "upstreamActualCostMicro": "72000",
+    "upstreamSettlementStatus": null
+  },
+  "settlementLifecycle": "Artifact receipt preceded completed channel close; native seller was resumed with new upstream paid work blocked until its existing signed one-off channel closed. No new buyer or render was started.",
+  "temporaryListenersClosed": true,
+  "limits": [
+    "Controlled self-buyer traffic, not organic demand or actual net profit.",
+    "First recovery session did not remain continuously available across an unrelated supply outage.",
+    "Reported upstream cost is not independently reconciled account-ledger attribution; upstream settlement status was not reported.",
+    "Decoded video is 8.08 seconds rather than the requested 5; profile fidelity remains unresolved.",
+    "No additional content family: overall live delivery coverage remains 9/11."
+  ]
+}
