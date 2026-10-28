@@ -11,7 +11,7 @@ async function fixture(t, options={}) {
   const {createGateway} = await import('../lib/gateway.mjs');
   const dir=await mkdtemp(join(tmpdir(),'gateway-test-'));
   const calls=[], events=[];
-  const server=createGateway({settings:{...settings,stateDir:dir,...options.settings},apiKey:'inf_test_server_only',localToken:'local-secret',getQuotes:options.getQuotes??quotes,fetchImpl:async(...args)=>{calls.push(args); return options.fetchImpl ? options.fetchImpl(...args) : Response.json(completion);},onEvent:event=>events.push(event)});
+  const server=createGateway({settings:{...settings,stateDir:dir,...options.settings},apiKey:options.apiKey??'inf_test_server_only',localToken:options.localToken??'local-secret',getQuotes:options.getQuotes??quotes,fetchImpl:async(...args)=>{calls.push(args); return options.fetchImpl ? options.fetchImpl(...args) : Response.json(completion);},onEvent:event=>events.push(event)});
   await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
   t.after(async()=>{server.closeAllConnections(); await new Promise(resolve=>server.close(resolve));await rm(dir,{recursive:true,force:true});});
   const base=`http://127.0.0.1:${server.address().port}`;
@@ -56,6 +56,150 @@ test('upstream HTTP and embedded errors are generic failures without body leaks'
   const f=await fixture(t,{fetchImpl:()=>response});
   for(const next of [response,Response.json({error:{message:'private provider body'}},{status:403}),new Response('not json',{status:200}),Response.json({choices:[]})]){response=next;const r=await f.post();assert.equal(r.status,502);assert.doesNotMatch(await r.text(),/inf_secret|private provider body|not json/);}
   assert.doesNotMatch(JSON.stringify(f.events),/inf_secret|private provider body/);
+});
+async function eventAfter(f,count=1) {
+  for(let i=0;i<200 && f.events.length<count;i++) await new Promise(resolve=>setTimeout(resolve,5));
+  assert.equal(f.events.length,count,'private completion event must not stall');
+  return f.events.at(-1);
+}
+function assertPrivateFailure(event,status,code) {
+  assert.deepEqual(Object.keys(event).sort(),['requestId','model','status',...(status===undefined?[]:['upstreamStatus']),...(code===undefined?[]:['upstreamErrorCode'])].sort());
+  assert.equal(event.status,502);assert.equal(event.model,'model-a');
+  assert.equal(event.upstreamStatus,status);assert.equal(event.upstreamErrorCode,code);
+}
+async function assertPublicFailure(response) {
+  assert.equal(response.status,502);
+  const body=await response.json();
+  assert.deepEqual(body,{error:{code:'upstream_request_failed',message:'upstream_request_failed',request_id:response.headers.get('x-request-id')}});
+}
+test('private HTTP diagnostics allow only bounded status and explicit provider codes',async t=>{
+  let response;const f=await fixture(t,{fetchImpl:()=>response});
+  const cases=[[400,{code:'INVALID_ARGUMENT'},'INVALID_ARGUMENT'],[401,{status:'PERMISSION_DENIED'},'PERMISSION_DENIED'],[429,{code:429,status:'RESOURCE_EXHAUSTED'},'RESOURCE_EXHAUSTED'],[500,{code:'invalid_request_error'},'invalid_request_error'],[503,{code:'server_error'},'server_error']];
+  for(const [status,error,code] of cases) {
+    response=Response.json({error:{...error,message:'private prompt inf_secret https://private.example',stack:'private stack'},metadata:{token:'private token'}},{status});
+    await assertPublicFailure(await f.post());
+    assertPrivateFailure(await eventAfter(f,f.calls.length),status,code);
+  }
+  assert.equal(f.calls.length,cases.length,'diagnostics must never retry or dispatch separately');
+  assert.doesNotMatch(JSON.stringify(f.events),/private prompt|inf_secret|private.example|private stack|private token/);
+});
+test('unknown, credential-shaped and numeric provider codes never enter private events',async t=>{
+  let response;const f=await fixture(t,{fetchImpl:()=>response});
+  const codes=['sk_syntheticSecretIdentifier','inf_test_server_only','local-secret','Bearer synthetic secret',123,-1,1e100,{nested:'INVALID_ARGUMENT'},['INVALID_ARGUMENT'],null];
+  for(const code of codes) {
+    response=Response.json({error:{code,status:code,message:'private prompt synthetic secret'}},{status:400});
+    await assertPublicFailure(await f.post());assertPrivateFailure(await eventAfter(f,f.calls.length),400);
+  }
+  assert.equal(f.calls.length,codes.length);
+});
+test('private diagnostics skip malformed, oversized and invalid UTF-8 bodies',async t=>{
+  let response;const f=await fixture(t,{fetchImpl:()=>response});
+  const valid=JSON.stringify({error:{code:'INVALID_ARGUMENT'}});
+  const bodies=[['not json',undefined],[valid+' '.repeat(16384-valid.length),'INVALID_ARGUMENT'],[valid+' '.repeat(16385-valid.length),undefined],[new Uint8Array([...new TextEncoder().encode(valid),0xff]),undefined],['{"error":{"code":"INVALID_ARGUMENT"}',undefined]];
+  for(const [body,code] of bodies) {
+    response=new Response(body,{status:400});await assertPublicFailure(await f.post());
+    assertPrivateFailure(await eventAfter(f,f.calls.length),400,code);
+  }
+});
+test('oversized diagnostic streams cancel before reading the remaining body',async t=>{
+  let cancelled=false,pulls=0;
+  const body=new ReadableStream({pull(controller){pulls++;controller.enqueue(new TextEncoder().encode('x'.repeat(16385)));},cancel(){cancelled=true;}},{highWaterMark:0});
+  const f=await fixture(t,{fetchImpl:()=>new Response(body,{status:429})});
+  await assertPublicFailure(await f.post());assertPrivateFailure(await eventAfter(f),429);
+  assert.equal(cancelled,true);assert.equal(body.locked,false);assert.equal(pulls,1);assert.equal(f.calls.length,1);
+});
+test('diagnostic work is bounded even when an upstream emits empty chunks',async t=>{
+  let pulls=0,cancelled=false;
+  const body=new ReadableStream({pull(controller){if(++pulls<=300)controller.enqueue(new Uint8Array());else {controller.enqueue(new TextEncoder().encode('{"error":{"code":"INVALID_ARGUMENT"}}'));controller.close();}},cancel(){cancelled=true;}},{highWaterMark:0});
+  const f=await fixture(t,{fetchImpl:()=>new Response(body,{status:400})});
+  await assertPublicFailure(await f.post());assertPrivateFailure(await eventAfter(f),400);
+  assert.ok(pulls<=256);assert.equal(cancelled,true);assert.equal(body.locked,false);
+});
+function busyWait(ms) {
+  const until=performance.now()+ms;
+  while(performance.now()<until) {/* Reproduce synchronous upstream pull work. */}
+}
+function busyDiagnosticStream() {
+  const state={pulls:0,cancelled:false};
+  state.body=new ReadableStream({
+    pull(controller) {
+      state.pulls++;busyWait(2);
+      if(state.pulls<=80)controller.enqueue(new Uint8Array());
+      else {controller.enqueue(new TextEncoder().encode('{"error":{"code":"INVALID_ARGUMENT"}}'));controller.close();}
+    },
+    cancel(){state.cancelled=true;}
+  },{highWaterMark:0});
+  return state;
+}
+test('monotonic diagnostic budget stops immediately resolved empty reads before accepting late JSON',async t=>{
+  const stream=busyDiagnosticStream();let endedBeforeRead=false,start,elapsed;
+  const f=await fixture(t,{settings:{requestTimeoutMs:1000},fetchImpl:()=>{start=performance.now();return new Response(stream.body,{status:400});}});
+  f.server.on('request',(_req,res)=>{const originalEnd=res.end;res.end=function(...args){const result=originalEnd.apply(this,args);endedBeforeRead=res.writableEnded && stream.pulls===0;return result;};});
+  await assertPublicFailure(await f.post());assertPrivateFailure(await eventAfter(f),400);
+  elapsed=performance.now()-start;t.diagnostic(`diagnostic elapsed=${elapsed.toFixed(1)}ms pulls=${stream.pulls}`);
+  assert.ok(stream.pulls<=25,'the 50ms elapsed budget must stop 2ms synchronous pulls before accepting late JSON');
+  assert.equal(endedBeforeRead,true);assert.equal(stream.cancelled,true);assert.equal(stream.body.locked,false);assert.equal(f.calls.length,1);
+});
+test('original request deadline bounds immediately resolved diagnostic reads below the diagnostic budget',async t=>{
+  const stream=busyDiagnosticStream();let start;
+  const f=await fixture(t,{settings:{requestTimeoutMs:20},fetchImpl:()=>{start=performance.now();return new Response(stream.body,{status:401});}});
+  await assertPublicFailure(await f.post());assertPrivateFailure(await eventAfter(f),401);
+  t.diagnostic(`request elapsed=${(performance.now()-start).toFixed(1)}ms pulls=${stream.pulls}`);
+  assert.ok(stream.pulls<=10,'the original 20ms deadline must win over the 50ms diagnostic budget even if abort timers are starved');
+  assert.equal(stream.cancelled,true);assert.equal(stream.body.locked,false);assert.equal(f.calls.length,1);
+});
+test('diagnostics cannot restart an original request deadline already consumed by synchronous fetch work',async t=>{
+  const stream=busyDiagnosticStream();
+  const f=await fixture(t,{settings:{requestTimeoutMs:20},fetchImpl:()=>{busyWait(30);return new Response(stream.body,{status:403});}});
+  await assertPublicFailure(await f.post());assertPrivateFailure(await eventAfter(f),403);
+  assert.equal(stream.pulls,0,'an expired original deadline must skip diagnostic reads even before its timer fires');
+  assert.equal(stream.cancelled,true);assert.equal(stream.body.locked,false);assert.equal(f.calls.length,1);
+});
+test('diagnostic read failures and absent bodies cannot change public failures',async t=>{
+  let response;const f=await fixture(t,{fetchImpl:()=>response});
+  for(const body of [null,new ReadableStream({start(controller){controller.error(new Error('private prompt inf_secret'));}})]) {
+    response=new Response(body,{status:503});await assertPublicFailure(await f.post());assertPrivateFailure(await eventAfter(f,f.calls.length),503);
+  }
+});
+test('allowlisted provider codes that contain configured credentials are still excluded',async t=>{
+  for(const secret of ['INVALID_ARGUMENT','ARGUMENT']) {
+    const f=await fixture(t,{apiKey:secret,localToken:'PERMISSION_DENIED',fetchImpl:()=>Response.json({error:{code:'INVALID_ARGUMENT',status:'PERMISSION_DENIED'}},{status:400})});
+    await assertPublicFailure(await f.post({}, {authorization:'Bearer PERMISSION_DENIED'}));assertPrivateFailure(await eventAfter(f),400);
+  }
+});
+test('stalled diagnostic reads and cancellation cannot delay the public failure or private cleanup',{timeout:1500},async t=>{
+  let cancelled=false;
+  const body=new ReadableStream({start(controller){controller.enqueue(new TextEncoder().encode('{"error":{"code":"INVALID_ARGUMENT"}}'));},cancel(){cancelled=true;return new Promise(()=>{});}});
+  const f=await fixture(t,{fetchImpl:()=>new Response(body,{status:500})});
+  await assertPublicFailure(await f.post());assertPrivateFailure(await eventAfter(f),500);
+  assert.equal(cancelled,true);assert.equal(body.locked,false);assert.equal(f.calls.length,1);
+});
+test('request deadline cancels stalled diagnostics without replacing the already-known HTTP failure',async t=>{
+  let cancelled=false,signal;
+  const body=new ReadableStream({cancel(){cancelled=true;}});
+  const f=await fixture(t,{settings:{requestTimeoutMs:20},fetchImpl:(_url,init)=>{signal=init.signal;return new Response(body,{status:401});}});
+  await assertPublicFailure(await f.post());assertPrivateFailure(await eventAfter(f),401);
+  assert.equal(signal.aborted,true);assert.equal(cancelled,true);assert.equal(body.locked,false);assert.equal(f.calls.length,1);
+});
+test('credential-bearing request IDs are excluded on both successful and failed responses',async t=>{
+  let response;const f=await fixture(t,{fetchImpl:()=>response});
+  for(const status of [200,400]) for(const id of ['inf_test_server_only','prefix_inf_test_server_only_suffix','local-secret','prefix_local-secret_suffix']) {
+    response=Response.json(status===200?completion:{error:{code:'INVALID_ARGUMENT'}},{status,headers:{'x-request-id':id}});
+    const result=await f.post();await result.text();
+    assert.equal(result.status,status===200?200:502);assert.equal((await eventAfter(f,f.calls.length)).upstreamRequestId,undefined);
+  }
+  assert.doesNotMatch(JSON.stringify(f.events),/inf_test_server_only|local-secret/);
+});
+test('safe upstream request IDs stay private and unknown HTTP statuses are omitted',async t=>{
+  let response=Response.json({error:{code:'INVALID_ARGUMENT'}},{status:400,headers:{'x-request-id':'safe_request-42'}});
+  const f=await fixture(t,{fetchImpl:()=>response});
+  const result=await f.post();await assertPublicFailure(result);
+  assert.equal(result.headers.get('x-request-id')==='safe_request-42',false);
+  assert.equal((await eventAfter(f)).upstreamRequestId,'safe_request-42');
+  for(const status of ['400',NaN,Infinity,600,-1,400.5]) {
+    response={ok:false,status,headers:new Headers(),body:Response.json({error:{code:'INVALID_ARGUMENT'}}).body};
+    await assertPublicFailure(await f.post());assertPrivateFailure(await eventAfter(f,f.calls.length),undefined,'INVALID_ARGUMENT');
+  }
 });
 test('concurrency stays reserved until completion',async t=>{
   let release;const pending=new Promise(resolve=>release=resolve);

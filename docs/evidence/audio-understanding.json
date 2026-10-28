@@ -1,0 +1,73 @@
+{
+  "controlledTraffic": true,
+  "seller": "0x0e49122e76bD8B9ccb2FE10c0088C41Ceb608927",
+  "buyer": "0x66fC6ca3CBC768B5d889e77Bc75eD1a79683DEC9",
+  "positiveAnswerMatched": true,
+  "silentControlRejected": true,
+  "positiveTranscriptSha256": "ef537f25c895bfa782526529a9b63d97aa631564d5d789c2b765448c8635fb6c",
+  "reportedUpstreamBuyerCostMicro": "0",
+  "upstreamChargeIndependentlyReconciled": false,
+  "settlements": [
+    {
+      "case": "spoken-positive",
+      "channelId": "0x3ca1549c220dc0f2ea48110989de5a407547558090b27a30c2a4d7e40c5bdd43",
+      "transactionHash": "0x5d2681b18666df63e0de196a6d7aad5d9894824a020a8b4c57b809a8bd1f28eb",
+      "blockNumber": 53209580,
+      "confirmations": 89,
+      "grossMicro": "137",
+      "feeMicro": "5",
+      "netMicro": "132"
+    },
+    {
+      "case": "silence-negative-control",
+      "channelId": "0x32ac2c899d86a664de24a0741e2c8bf1f7cfb575fc5814d7e971e7456e6a2516",
+      "transactionHash": "0x65dd6a72cb8297cd41207db0f8a9461f11db345eef3615be83003109bf09dfa2",
+      "blockNumber": 53209601,
+      "confirmations": 68,
+      "grossMicro": "181",
+      "feeMicro": "7",
+      "netMicro": "174"
+    }
+  ],
+  "sourceCommit": "5a0d4136b768950e176b9b1064a22eb7ee77eed1",
+  "positiveProbe": {
+    "model": "gemini-2.5-flash",
+    "startedAt": "2026-10-28T17:28:02.428Z",
+    "completedAt": "2026-10-28T17:28:23.347Z",
+    "status": 200,
+    "inputMime": "audio/wav",
+    "inputBytes": 85896,
+    "usage": {
+      "completion_tokens": 10,
+      "prompt_tokens": 97,
+      "total_tokens": 107,
+      "buyer_cost_micro": 0
+    },
+    "textSha256": "ef537f25c895bfa782526529a9b63d97aa631564d5d789c2b765448c8635fb6c"
+  },
+  "requiredCases": 11,
+  "deliverySuccessfulCases": 7,
+  "passingCases": [
+    "image",
+    "video",
+    "text",
+    "vision",
+    "responses",
+    "messages",
+    "audio-input"
+  ],
+  "goalComplete": false,
+  "warnings": [
+    "Controlled buyer traffic is not organic demand.",
+    "Silence was a deliberate negative control; its semantic rejection still incurred a downstream charge.",
+    "Reported upstream buyer cost is zero, but actual upstream charge and net profitability are not independently reconciled.",
+    "Video duration fidelity, image edits, decisions, PDF/video understanding, restart retrieval and extension revenue-funded refill acceptance remain open."
+  ],
+  "sellerStoppedCleanly": true,
+  "listenersAfterShutdown": {
+    "6881": false,
+    "6882": false,
+    "18791": false,
+    "8378": false
+  }
+}
