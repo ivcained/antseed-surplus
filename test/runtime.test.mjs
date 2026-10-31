@@ -30,7 +30,7 @@ test('runtime plugin tree is isolated from user global antseed state',async()=>{
  const stateDir=await mkdtemp(join(tmpdir(),'seller-runtime-')); const s={...settings,stateDir};
  const runtime=await prepareRuntime(s,quotes);
  const config=JSON.parse(await readFile(runtime.configPath,'utf8'));
- assert.equal(config.identity.displayName,'surplusintelligence.ai');
+ assert.equal(config.identity.displayName,'surplus-hive');
  assert.match(await readFile(runtime.cliPath,'utf8'),/node|import/);
  assert.equal(config.seller.providers.surplus.plugin,'openai');
  assert.equal((await lstat(join(runtime.home,'.antseed/plugins/node_modules'))).isSymbolicLink(),true);
@@ -57,9 +57,9 @@ const mediaQuotes={services:{
 }};
 const mediaProtocols={'gpt-oss-120b':textProtocols,image:['openai-images'],video:['venice-video'],decision:['typesafe-systemone']};
 
-test('seller display name is surplusintelligence.ai across text, endpoint and media configs',()=>{
+test('seller display name is surplus-hive across text, endpoint and media configs',()=>{
  for(const [s,q] of [[settings,quotes],[endpointSettings,endpointQuotes],[settings,mediaQuotes]]) {
-  assert.equal(buildAntseedConfig(s,q).identity.displayName,'surplusintelligence.ai');
+  assert.equal(buildAntseedConfig(s,q).identity.displayName,'surplus-hive');
  }
 });
 
