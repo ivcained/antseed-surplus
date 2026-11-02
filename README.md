@@ -2,7 +2,12 @@
 
 A standalone **multimodal AntSeed seller** with a private loopback gateway to Surplus Intelligence (SI). It supports text, image generation and editing, image-to-video generation, image/audio/PDF/video understanding, and structured decisions through the configured shared AntSeed/SI protocols. The seller and the balance/topup monitor are separate processes. This project does not modify another AntSeed/Venice installation.
 
-**The default configuration is text-only** (`openai-gpt-oss-120b`). Other modalities are implemented but must be explicitly configured with reviewed models, routes and pricing; cloning the project does not automatically enable every service. The advertised seller display name is **`surplus-hive`**; different sellers are distinguished by their wallet-derived AntSeed peer IDs, not by this shared label.
+**The default configuration is text-only** (`openai-gpt-oss-120b`). Other modalities are implemented but must be explicitly configured with reviewed models, routes and pricing; cloning the project does not automatically enable every service. The advertised seller display name is **`surplus-hive`**.
+> **Fork note (LC operator build):** this fork removes the buyer-side output-token cap: `max_tokens` passes through
+> exactly as the buyer asks, and requests without a limit are forwarded uncapped. The seller CLI dashboard is
+> enabled by default: the live seller announces model health and serves the dashboard on loopback, and the
+> reference deployment additionally runs a standalone dashboard service behind HTTPS with its own session token.
+; different sellers are distinguished by their wallet-derived AntSeed peer IDs, not by this shared label.
 
 **Pricing is an explicitly accepted estimate, not a guaranteed-profit strategy.** SI's public orderbook omits full per-offer cache rates and account fees. Provider pinning is not exact-offer pinning, and `max_price_per_1m` may be ignored with minimum-discount routing. Without a reviewed pricing policy the application fails closed rather than inventing a safe price.
 

@@ -35,14 +35,14 @@ test('forwards only allowed JSON and own headers, pins routing and output bound'
   assert.equal(init.redirect,'error');
   assert.deepEqual(Object.keys(init.headers).sort(),['authorization','content-type']);
   assert.equal(init.headers.authorization,'Bearer inf_test_server_only');
-  assert.deepEqual(Object.keys(body).sort(),['max_price_per_1m','max_tokens','messages','model','provider','providers_blocked','si_route','stream','temperature','tools']);
-  assert.equal(body.provider,'venice');assert.equal(body.max_price_per_1m,2.5);assert.equal(body.max_tokens,64);
+  assert.deepEqual(Object.keys(body).sort(),['max_price_per_1m','messages','model','provider','providers_blocked','si_route','stream','temperature','tools']); // fork: no injected max_tokens
+  assert.equal(body.provider,'venice');assert.equal(body.max_price_per_1m,2.5);
   assert.equal(f.events.length,1);assert.deepEqual(f.events[0].usage,completion.usage);
   assert.doesNotMatch(JSON.stringify(f.events),/private prompt|hello|inf_test|caller-secret/);
 });
 test('unlisted model, built-in tools, invalid token budgets and oversized body never spend',async t=>{
   const f=await fixture(t);
-  for(const body of [{model:'missing'},{max_tokens:65},{max_completion_tokens:65},{max_tokens:-1},{tools:[{type:'web_search'}]},{messages:[{role:'user',content:'x'.repeat(5000)}]}]) assert.ok((await f.post(body)).status>=400);
+  for(const body of [{model:'missing'},{max_tokens:-1},{max_tokens:1.5},{tools:[{type:'web_search'}]},{messages:[{role:'user',content:'x'.repeat(5000)}]}]) assert.ok((await f.post(body)).status>=400); // fork: high token limits allowed, invalid values rejected
   assert.equal(f.calls.length,0);
 });
 test('stale, future, missing, malformed or underbounded quotes fail closed',async t=>{
