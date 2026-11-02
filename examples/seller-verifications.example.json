@@ -1,0 +1,8 @@
+{
+  "domains": [
+    { "domain": "seller.example.com", "methods": ["https-well-known", "dns-txt"] }
+  ],
+  "github": [
+    { "username": "your-github-user", "repository": "antseed-verification" }
+  ]
+}
