@@ -20,7 +20,7 @@ const snapshot = { settled: false, closeCalls: 0, gatewayClosed: false, spawns: 
 let child, gateway, blocker, onEvent;
 let ready;
 const childReady = new Promise(resolve => { ready = resolve; });
-const quote = { services: { test: { provider: 'venice', upstreamModel: 'test',
+const quote = { generatedAt: new Date().toISOString(), services: { test: { provider: 'venice', upstreamModel: 'test',
   pricing: { inputUsdPerMillion: 1, outputUsdPerMillion: 2, cachedInputUsdPerMillion: 1 },
   upstreamPricing: { inputUsdPerMillion: .5, outputUsdPerMillion: 1, cachedInputUsdPerMillion: .5 },
   maxPricePer1m: 1 } } };
@@ -34,6 +34,7 @@ if (scenario === 'logFailure') await mkdir(join(stateDir, 'seller.log'));
 if (scenario === 'eventFailure') await mkdir(join(stateDir, 'gateway-events.jsonl'));
 const settings = { stateDir, gatewayPort: 0, dhtPort: 0, signalingPort: 0,
   rpcUrl: 'http://127.0.0.1:1', maxConcurrent: 1, refreshMs: 80, lossTest: false };
+if (scenario === 'refreshFailureRetains') settings.quoteMaxAgeMs = 1200;
 if (scenario === 'listenFailure') {
   blocker = createServer();
   await new Promise(resolve => blocker.listen(0, '127.0.0.1', resolve));
@@ -88,7 +89,7 @@ try {
       snapshot.fetches++;
       snapshot.lockDuringFetch = existsSync(lockPath);
       if (scenario === 'initialFailure') throw new Error('fixture initial quote failure');
-      if (scenario === 'refreshFailure' && snapshot.fetches > 1) {
+      if ((scenario === 'refreshFailure' || scenario === 'refreshFailureRetains') && snapshot.fetches > 1) {
         await childReady;
         throw new Error('fixture quote refresh failure');
       }
@@ -157,6 +158,12 @@ test('quote-refresh safety shutdown cannot become success when child exits zero'
   assertFatal(result);
   assert.equal(result.childExitCode, 0);
   assert.equal(result.fetches, 2);
+});
+test('a refresh failure inside the staleness bound retains quotes, beyond it fails closed', async t => {
+  const result = await runCase(t, 'refreshFailureRetains');
+  assertFatal(result);
+  assert.equal(result.childExitCode, 0);
+  assert.ok(result.fetches >= 4, `expected several retained refresh cycles, got ${result.fetches}`);
 });
 test('occupied seller lock prevents quote reads and runtime/config/manifest writes', async t => {
   const result = await runCase(t, 'occupied');

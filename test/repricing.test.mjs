@@ -9,12 +9,28 @@ test('refresh keeps published rates and fresh upper bound when cost remains safe
  assert.equal(r.generatedAt,'new');
  assert.equal(r.services.test.maxPricePer1m,fresh.services.test.maxPricePer1m);
 });
-test('cost increases beyond advertised rates, provider drift or missing model fail closed',()=>{
+test('cost increases or a missing upstream de-list only that model, with reasons recorded',()=>{
+ const old={services:{test:service(1,2,1),kept:service(1.1,2.2,1.1)}};
+ const risen={services:{test:service(2,4,2),kept:service(1,2,1)}};
+ const r=keepAdvertisedPrices(old,risen,{lossTest:false});
+ assert.ok(!r.services.test);assert.ok(r.services.kept);
+ assert.match(r.unavailable.test,/rose beyond advertised/i);
+ const missing=keepAdvertisedPrices(old,{services:{kept:service(1,2,1)}},{lossTest:false});
+ assert.ok(!missing.services.test);assert.match(missing.unavailable.test,/missing/i);
+ const back=keepAdvertisedPrices(old,{services:{test:service(1,2,1),kept:service(1,2,1)}},{lossTest:false});
+ assert.ok(back.services.test);assert.ok(!back.unavailable.test);
+});
+test('provider drift stays fatal: serving stale consent is never allowed',()=>{
  const old={services:{test:service(1,2,1)}};
- assert.throws(()=>keepAdvertisedPrices(old,{services:{test:service(2,4,2)}},{lossTest:false}),/price/);
  const drift=service(1,2,1);drift.provider='antseed';
  assert.throws(()=>keepAdvertisedPrices(old,{services:{test:drift}},{lossTest:false}),/provider/);
- assert.throws(()=>keepAdvertisedPrices(old,{services:{}},{lossTest:false}),/missing/);
+});
+test('media unit price increase de-lists the service instead of failing the seller',()=>{
+ const a={provider:'venice',upstreamModel:'venice-sd35',kind:'image',media:{parameters:{size:'1024x1024'}},unitPriceUsd:.03,
+  pricing:{inputUsdPerMillion:1,outputUsdPerMillion:2,cachedInputUsdPerMillion:1}};
+ const old={services:{'venice-sd35':a}};
+ const r=keepAdvertisedPrices(old,{services:{'venice-sd35':{...a,unitPriceUsd:.04}}},{lossTest:false});
+ assert.ok(!r.services['venice-sd35']);assert.match(r.unavailable['venice-sd35'],/media unit price/i);
 });
 test('loss mode is explicit and does not weaken provider pin',()=>{
  const old={services:{test:service(.1,.2,.1)}};const fresh={services:{test:service(1,2,1)}};
