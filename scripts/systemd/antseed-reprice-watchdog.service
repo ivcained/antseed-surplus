@@ -1,0 +1,10 @@
+[Unit]
+Description=Reprice watchdog for the AntSeed seller (restores price-rise de-listed models)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/antseed-surplus
+ExecStart=/usr/bin/python3 /opt/antseed-surplus/scripts-ops/reprice-watchdog.py
