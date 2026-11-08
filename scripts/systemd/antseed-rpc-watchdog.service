@@ -1,0 +1,11 @@
+[Unit]
+Description=RPC failover watchdog for the AntSeed seller (Base 8453)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/antseed-surplus
+# Adjust the script path and defaults (see docs/RPC-FAILOVER.md) to your deployment.
+ExecStart=/usr/bin/python3 /opt/antseed-surplus/scripts-ops/rpc-watchdog.py
