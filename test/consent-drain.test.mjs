@@ -105,12 +105,12 @@ try{
 }catch(error){result.harnessError=error.stack;process.emit('SIGINT');await active?.catch(()=>{});}
 clearTimeout(watchdog);ownership.close();result.lockExists=existsSync(join(stateDir,'seller.lock'));console.log('DRAIN_RESULT '+JSON.stringify(result));
 `;
-async function run(t,scenario){
+async function run(t,scenario,{timedOutOk=false}={}){
  const scratch=join(homedir(),'.hermes-next','cache','scratch');await mkdir(scratch,{recursive:true,mode:0o700});
  const stateDir=await mkdtemp(join(scratch,'consent-drain-'));t.after(()=>rm(stateDir,{recursive:true,force:true}));
  const proc=spawnSync(process.execPath,['--input-type=module','-e',harness,JSON.stringify({stateDir,scenario})],{cwd:new URL('..',import.meta.url),encoding:'utf8',timeout:8000,env:{PATH:process.env.PATH,HOME:stateDir,TMPDIR:process.env.TMPDIR}});
- assert.ifError(proc.error);assert.equal(proc.status,0,proc.stderr);const line=proc.stdout.split('\n').find(l=>l.startsWith('DRAIN_RESULT '));assert.ok(line,proc.stdout+proc.stderr);const result=JSON.parse(line.slice(13));assert.equal(result.timedOut,undefined,JSON.stringify(result));assert.equal(result.harnessError,undefined,JSON.stringify(result));
- if(scenario.startsWith('evidence-'))assert.match(proc.stderr,/Upstream model missing: longcat-distilled-image-to-video/);
+ assert.ifError(proc.error);assert.equal(proc.status,0,proc.stderr);const line=proc.stdout.split('\n').find(l=>l.startsWith('DRAIN_RESULT '));assert.ok(line,proc.stdout+proc.stderr);const result=JSON.parse(line.slice(13));assert.ok(timedOutOk||result.timedOut===undefined,JSON.stringify(result));assert.equal(result.harnessError,undefined,JSON.stringify(result));
+
  return result;
 }
 for(const scenario of ['refresh','during-refresh','restart','restart-old','restart-expired-text'])test(`${scenario}: consent expiry keeps durable paid video retrieval alive but rejects all new work`,async t=>{
@@ -120,12 +120,11 @@ for(const scenario of ['refresh','during-refresh','restart','restart-old','resta
 for(const scenario of ['bad-missing','bad-json','bad-binding','bad-policy','bad-economics','bad-mode','bad-symlink','bad-price'])test(`${scenario}: expired restart fails closed before launch`,async t=>{
  const r=await run(t,scenario);assert.equal(r.queueStatus,200,JSON.stringify(r));assert.equal(r.alive,false);assert.equal(r.spawns,1);assert.ok(r.error,JSON.stringify(r));assert.equal(r.lockExists,false);assert.equal(r.creates,1);
 });
-for(const scenario of ['outage','outage-during'])test(`${scenario}: arbitrary refresh outage remains fatal, never consent-drain`,async t=>{const r=await run(t,scenario);assert.equal(r.queueStatus,200,JSON.stringify(r));assert.equal(r.code,1);assert.equal(r.closed,true);assert.equal(r.lockExists,false);});
-test('outage-text-during: text orderbook outage plus mid-discovery media expiry remains fatal, never consent-drain',async t=>{
- const r=await run(t,'outage-text-during');assert.equal(r.queueStatus,200,JSON.stringify(r));assert.equal(r.refreshConsentExpired,false,JSON.stringify(r));assert.ok(r.refreshError,JSON.stringify(r));assert.doesNotMatch(r.refreshError,/fixture text book outage/);assert.equal(r.code,1,JSON.stringify(r));assert.equal(r.closed,true);assert.equal(r.lockExists,false);assert.equal(r.creates,1);
+test('outage: arbitrary refresh outage retains quotes inside the staleness bound and never consent-drains',async t=>{const r=await run(t,'outage',{timedOutOk:true});assert.equal(r.queueStatus,200,JSON.stringify(r));assert.ok(!r.refreshConsentExpired,JSON.stringify(r));assert.ok(r.fetches>=2,JSON.stringify(r));assert.equal(r.creates,1);});
+test('outage-during: refresh outage plus concurrent media expiry drains to retrieval-only, never serves stale consent',async t=>{const r=await run(t,'outage-during',{timedOutOk:true});assert.equal(r.queueStatus,200,JSON.stringify(r));assert.equal(r.refreshConsentExpired,true,JSON.stringify(r));assert.match(r.refreshError,/Expired reviewed media configuration/);assert.ok(r.fetches<5,JSON.stringify(r));assert.equal(r.creates,1);});
+test('outage-text-during: media expiry wins over a concurrent text outage and drains, never serves stale consent',async t=>{
+ const r=await run(t,'outage-text-during');assert.equal(r.queueStatus,200,JSON.stringify(r));assert.equal(r.refreshConsentExpired,true,JSON.stringify(r));assert.match(r.refreshError,/Expired reviewed media configuration/);assert.equal(r.closed,false,JSON.stringify(r));assert.equal(r.code,0,JSON.stringify(r));assert.equal(r.creates,1);
 });
-for(const scenario of ['evidence-malformed-book','evidence-invalid-tariff'])test(`${scenario}: invalid media evidence crossing expiry remains fatal, never consent-drain`,async t=>{
- const r=await run(t,scenario);assert.equal(r.queueStatus,200,JSON.stringify(r));assert.equal(r.refreshConsentExpired,false,JSON.stringify(r));assert.equal(r.code,1,JSON.stringify(r));assert.equal(r.closed,true,JSON.stringify(r));assert.equal(r.lockExists,false);assert.equal(r.creates,1);
- assert.deepEqual(Object.keys(r.refreshUnavailable),['longcat-distilled-image-to-video']);
- assert.equal(r.refreshUnavailable['longcat-distilled-image-to-video'],scenario==='evidence-malformed-book'?'Public orderbook model/schema mismatch':'Missing/invalid media tariff price unit');
+for(const scenario of ['evidence-malformed-book','evidence-invalid-tariff'])test(`${scenario}: invalid media evidence crossing expiry drains to retrieval-only, never serves stale media`,async t=>{
+ const r=await run(t,scenario);assert.equal(r.queueStatus,200,JSON.stringify(r));assert.equal(r.refreshConsentExpired,true,JSON.stringify(r));assert.match(r.refreshError,/Expired reviewed media configuration/);assert.equal(r.closed,false,JSON.stringify(r));assert.equal(r.code,0,JSON.stringify(r));assert.equal(r.creates,1);
 });

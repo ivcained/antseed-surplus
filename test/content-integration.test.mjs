@@ -66,7 +66,7 @@ test('extended endpoints inherit loopback bearer authentication and the root con
 });
 test('media repricing stops on increased unit price, variant changes and changed billing kind',()=>{
  const a=quotes.services['venice-sd35'];const ad={services:{'venice-sd35':a}};
- assert.throws(()=>keepAdvertisedPrices(ad,{services:{'venice-sd35':{...a,unitPriceUsd:.04}}},{lossTest:false}),/price/i);
+ {const r=keepAdvertisedPrices(ad,{services:{'venice-sd35':{...a,unitPriceUsd:.04}}},{lossTest:false});assert.ok(!r.services['venice-sd35']);assert.match(r.unavailable['venice-sd35'],/media unit price/i);}
  assert.throws(()=>keepAdvertisedPrices(ad,{services:{'venice-sd35':{...a,media:{...a.media,parameters:{size:'2048x2048'}}}}},{lossTest:false}),/configuration|variant|parameter/i);
  assert.throws(()=>keepAdvertisedPrices(ad,{services:{'venice-sd35':{...a,kind:'decision'}}},{lossTest:false}),/kind|billing/i);
  const lower={...a,unitPriceUsd:.02};const result=keepAdvertisedPrices(ad,{services:{'venice-sd35':lower}},{lossTest:false});
