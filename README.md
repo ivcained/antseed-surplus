@@ -3,7 +3,11 @@
 A standalone **multimodal AntSeed seller** with a private loopback gateway to Surplus Intelligence (SI). It supports text, image generation and editing, image-to-video generation, image/audio/PDF/video understanding, and structured decisions through the configured shared AntSeed/SI protocols. The seller and the balance/topup monitor are separate processes. This project does not modify another AntSeed/Venice installation.
 
 **The default configuration is text-only** (`openai-gpt-oss-120b`). Other modalities are implemented but must be explicitly configured with reviewed models, routes and pricing; cloning the project does not automatically enable every service. The advertised seller display name is **`surplus-hive`**.
-> **Fork note (LC operator build):** this fork removes the buyer-side output-token cap: `max_tokens` passes through
+> **Fork note (LC operator build):** this is an operator fork of the original gitlawb repository
+> [`z6MkoyCV…Xj14f/antseed-surplus`](https://explorer.twigpine.com/repos/z6MkoyCVwBq8br8JaUfqTMpnMZMDgByyurJ9Wtoc8rdXj14f/antseed-surplus)
+> (plain-HTTPS clone: `git clone https://node.gitlawb.com/z6MkoyCVwBq8br8JaUfqTMpnMZMDgByyurJ9Wtoc8rdXj14f/antseed-surplus.git`).
+> Upstream changes are contributed back as gitlawb pull requests; this fork adds the changes listed below.
+> It removes the buyer-side output-token cap: `max_tokens` passes through
 > exactly as the buyer asks, and requests without a limit are forwarded uncapped. The seller CLI dashboard is
 > enabled by default: the live seller announces model health and serves the dashboard on loopback, and the
 > reference deployment additionally runs a standalone dashboard service behind HTTPS with its own session token.
