@@ -12,7 +12,7 @@ but channel settlements silently stop.
 
 1. Counts `Failed to poll CloseRequested` lines in the **current instance's** journal
    (PID-filtered, so dead instances can never trigger a restart loop) over the last 8 minutes.
-2. Fewer than 2 failures: exit 0, no action. A single transient failure must not restart anything.
+2. Fewer than 2 failures in the window, OR no failure in the last 3 minutes (a burst that already recovered): exit 0, no action.
 3. Seller restarted within the last 3 minutes: skip, give it time.
 4. Otherwise: restart the seller. The cursor resets to head and settlement polling resumes.
 
@@ -25,6 +25,10 @@ Fail-closed: if the PID, journal or restart call fails, it logs and exits non-ze
   (measured: Alchemy free tier caps at 10 blocks - unusable for this poll).
 - Endpoints with a ~10,000-block cap (e.g. dRPC free) work fine while the cursor is fresh;
   the watchdog's restart turns any frozen-cursor incident into a bounded gap.
+- CAUTION: a crash-looping sibling process that scans USDC getLogs over 1000-block spans
+  can exhaust a free endpoint's per-IP quota and make the seller's small polls 400
+  intermittently (measured: dRPC 400s a 500-block USDC scan, serves 100-block spans).
+  Contain the sibling first; the watchdog's recent-failure rule avoids restarting on bursts.
 - Events emitted while the cursor is frozen are skipped by the restart (the cursor jumps to head);
   they settle later through the timeout path, not the event path.
 

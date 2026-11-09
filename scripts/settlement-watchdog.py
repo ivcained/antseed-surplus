@@ -8,6 +8,8 @@ import subprocess, sys, time
 from datetime import datetime, timezone
 
 WINDOW_MIN = 8          # look-back window; poll runs every 60s
+RECENT_MIN = 3          # a failure must also be this recent: the poll must be
+                        # failing NOW, not just earlier in a burst that recovered
 MIN_FAILURES = 2        # >=2 failed cycles = frozen, not a one-off
 RESTART_GUARD_SEC = 180 # never restart if the seller restarted this recently
 LOG = "/opt/antseed-surplus/scripts-ops/settlement-watchdog.log"
@@ -40,6 +42,13 @@ if q.returncode != 0:
 n = q.stdout.count("Failed to poll CloseRequested")
 if n < MIN_FAILURES:
     sys.exit(0)  # healthy (or a single transient failure) - do nothing
+q3 = run(["journalctl", "-u", "antseed-surplus-seller", "_PID=" + pid_s,
+          "--since", "-{} min".format(RECENT_MIN), "--no-pager"])
+recent_n = q3.stdout.count("Failed to poll CloseRequested") if q3.returncode == 0 else 0
+if recent_n < 1:
+    log("SKIP: {} failures in {}min but none in the last {}min (burst recovered)".format(
+        n, WINDOW_MIN, RECENT_MIN))
+    sys.exit(0)
 
 # 2. restarted too recently? (main PID age)
 up = run(["ps", "-o", "etimes=", "-p", pid_s])
