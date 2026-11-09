@@ -1,0 +1,5 @@
+[Unit]
+Description=antseed-surplus settlement poll self-heal
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/antseed-surplus/scripts-ops/settlement-watchdog.py
