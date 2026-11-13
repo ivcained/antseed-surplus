@@ -29,9 +29,17 @@ test('dual-basis: one policy prices live-book groq and envelope venice models to
  assert.deepEqual(q.unavailable,{});
 });
 
-test('dual-basis: live-book on a non-groq route is refused before pricing',async()=>{
+test('dual-basis: live-book on a reviewed venice route is accepted',async()=>{
  const {fetchQuotes}=await import('../lib/pricing.mjs');
  const policy={...policyBase,provider:'venice',modelRoutes:{'duo-b':{provider:'venice',host:'api.venice.ai'}},modelBasis:{'duo-b':'live-book'}};
  const settings={surplusBaseUrl:'https://api.surplusintelligence.ai/v1',models:['duo-b'],marginBps:100,safetyBps:500,pricingPolicy:policy};
- await assert.rejects(fetchQuotes(settings,'inf_duo_fixture',fetchImpl),/Live-book estimates require reviewed native Groq/);
+ const q=await fetchQuotes(settings,'inf_duo_fixture',fetchImpl);
+ assert.equal(q.services['duo-b'].priceBasis,'live-book-maximum-estimate');
+ assert.ok(Number.isFinite(q.services['duo-b'].minDiscountPct));
+});
+test('dual-basis: live-book on an unreviewed route is refused before pricing',async()=>{
+ const {fetchQuotes}=await import('../lib/pricing.mjs');
+ const policy={...policyBase,provider:'venice',modelRoutes:{'duo-b':{provider:'openrouter',host:'openrouter.ai'}},modelBasis:{'duo-b':'live-book'}};
+ const settings={surplusBaseUrl:'https://api.surplusintelligence.ai/v1',models:['duo-b'],marginBps:100,safetyBps:500,pricingPolicy:policy};
+ await assert.rejects(fetchQuotes(settings,'inf_duo_fixture',fetchImpl),/Invalid model route policy|reviewed native provider route/);
 });

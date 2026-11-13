@@ -250,12 +250,12 @@ for(const [name,modelRoutes] of malformedRoutes)for(const expired of [false,true
  assert.equal(calls,0);
 });
 
-test('routes cannot broaden live-book consent beyond reviewed Groq cache-at-input',async()=>{
+test('routes cannot broaden live-book consent beyond reviewed providers with cache-at-input',async()=>{
  const {fetchQuotes}=await module();let calls=0;
- for(const provider of ['openai','google','venice']) {
-  const p={...policy(),provider:'groq',cacheAtInput:true,basis:'live-book',modelRoutes:{[settings.models[0]]:{provider,host:endpointHost[provider]}}};
-  await assert.rejects(fetchQuotes({...settings,pricingPolicy:p},'fixture',async()=>{calls++;return Response.json(catalog);}),/Groq|policy/i);
- }
+ const unreviewed={...policy(),provider:'groq',cacheAtInput:true,basis:'live-book',modelRoutes:{[settings.models[0]]:{provider:'openrouter',host:'openrouter.ai'}}};
+ await assert.rejects(fetchQuotes({...settings,pricingPolicy:unreviewed},'fixture',async()=>{calls++;return Response.json(catalog);}),/Invalid model route policy|reviewed native provider route/);
+ const noConsent={...policy(),provider:'venice',cacheAtInput:false,basis:'live-book',modelRoutes:{[settings.models[0]]:{provider:'venice',host:'api.venice.ai'}}};
+ await assert.rejects(fetchQuotes({...settings,pricingPolicy:noConsent},'fixture',async()=>{calls++;return Response.json(catalog);}),/cache-at-input consent/);
  assert.equal(calls,0);
 });
 
